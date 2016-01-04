@@ -13,6 +13,32 @@ import gilp.learning.GILPSettings;
  * */
 public class YagoPreprocess {
 	
+	static void generateIndex(){
+		String fileName = "predicates";
+		RandomAccessFile file = null;
+		
+		try {
+			file = new RandomAccessFile(fileName, "r");
+			
+			String line = null;
+			while((line=file.readLine())!=null){
+				line = line.replace(":", "");
+				String[] index_names = {"idx_" + line + "_S", "idx_" + line + "_O"};
+				for (String str: index_names){
+					String sql = "DROP INDEX if exists " + str + " ;";
+					System.out.println(sql);
+					sql = "CREATE index ";
+					sql += str + " on ";
+					sql += line + "(" + str.substring(str.lastIndexOf("_")+1) + ");";					
+					System.out.println(sql);
+				}
+			
+			}		 
+		} catch (Exception e) {
+			e.printStackTrace(System.out);
+		} 
+	}
+	
 	/*generate SQL for creating predicate tables*/
 	static void generatePredicateTables(){
 		
@@ -25,7 +51,8 @@ public class YagoPreprocess {
 			String line = null;
 			while((line=file.readLine())!=null){
 				line = line.replace(":", "");
-				String sql = "DROP TABLE if exists " + line + " ;\n";
+				String sql = "DROP TABLE if exists " + line + " ;";
+				System.out.println(sql);
 				sql += "CREATE TABLE ";
 				sql += line + " ";
 				sql += "( tid serial NOT NULL, ";
@@ -93,6 +120,6 @@ public class YagoPreprocess {
 	}
 	
 	public static void main(String[] args){
-		generateLiteralInsersionSql(args[0] );
+		generateIndex( );
 	}
 }

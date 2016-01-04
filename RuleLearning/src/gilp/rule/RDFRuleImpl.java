@@ -236,6 +236,18 @@ public class RDFRuleImpl extends Rule {
 		}		
 		return listRlts;
 	}
+	
+	//suppose r:  B -> H
+	// this returns B AND H'
+	// H' is obtained by removing prefixes from H 
+	public Clause getNoprefixCaluse(){
+		Clause cls = this.get_body().clone();
+		RDFPredicate h = (RDFPredicate)this._head;
+		h = h.mapToOriginalPred();
+		if (!this.containAtom(h))
+			cls.addPredicate(h);
+		return cls;			
+	}
 	 
 	//****************************************************************************
 		

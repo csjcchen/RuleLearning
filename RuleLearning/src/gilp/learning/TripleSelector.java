@@ -3,6 +3,7 @@ package gilp.learning;
 import java.util.ArrayList;
 
 import gilp.feedback.Feedback;
+import gilp.rdf.PGEngine;
 import gilp.rdf.RDF3XEngine;
 import gilp.rdf.RDFSubGraphSet;
 import gilp.rdf.Triple;
@@ -75,11 +76,12 @@ public class TripleSelector {
 		//Unfortunately, RDF3X does not support limit or random()
 		//A not-good solution, retrieves 10*n triples from RDF3x
 		
-		RDF3XEngine qe = new RDF3XEngine();
-		Clause cls = r.getCorrespondingClause(); 
+		PGEngine qe = new PGEngine();
+		
+		Clause cls = ((RDFRuleImpl)r).getNoprefixCaluse(); 
 
 		//try to get at most 10*n triples to be used for sampling
-		RDFSubGraphSet sg_set = qe.getTriplesByCNF(cls, null, 10*n); 
+		RDFSubGraphSet sg_set = qe.getTriplesByCNF(cls, 10*n); 
 		if(sg_set == null)
 			return null;
 		//find all triples covered by @r in the KB

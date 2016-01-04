@@ -10,4 +10,8 @@ public class StringUtils {
 		str = str.replace(">", "");
 		return str;
 	}
+	
+	public static void main(String[] args){
+		System.out.println(removePointBrackets("<abc>"));
+	}
 }

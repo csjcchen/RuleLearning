@@ -21,7 +21,9 @@ public class GILPSettings {
 	
 	public static double EPSILON = 1.0e-7;	
 	 
-	public static double MINIMUM_FOIL_GAIN = 0;;
+	public static double MINIMUM_FOIL_GAIN = -1.0e7;
+	
+	public static double MAXIMUM_FOIL_GAIN = 1.0e7;
 	
 	public static double FREQUENT_CONST_IN_FB; 
 		//A threshold used in the process of feature construction. 

@@ -48,7 +48,7 @@ public class FeedbackGenerator {
 	
 	private ArrayList<Triple> retrieveTriples(Clause cls, String predicate){
 		//RDF3XEngine qe = new RDF3XEngine(); 
-		PGEngine qe = new PGEngine();
+		PGEngine qe = new PGEngine(); 
 		RDFSubGraphSet sg_set = qe.getTriplesByCNF(cls); 		 
 		return sg_set.getTriplesByPredicate(predicate);
 	}

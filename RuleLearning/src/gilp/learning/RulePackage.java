@@ -129,7 +129,7 @@ public class RulePackage {
 			if (q0 > GILPSettings.EPSILON)
 				q0 = Math.log(q0) / Math.log(2.0);
 		}
-  
+		
 		if (this.getPHat() < GILPSettings.EPSILON)
 			this._quality = 0;
 		else
@@ -272,13 +272,12 @@ public class RulePackage {
 	
 	@Override
 	public RulePackage clone(){
-		RulePackage new_rp = new RulePackage(this._rule.clone(),this._fb,this._base_RP.clone());
-		new_rp._PHat = this._PHat;
-		new_rp._NHat = this._NHat;
-		new_rp._precision = this._precision;
-		new_rp._quality = this._quality;
-		new_rp._fb_support = this._fb_support;
-		new_rp._kb_support = this._kb_support;
+		RulePackage new_rp = null;
+		if (this._base_RP!=null)
+			new_rp = new RulePackage(this._rule.clone(),this._fb,this._base_RP.clone());
+		else
+			new_rp = new RulePackage(this._rule.clone(),this._fb,null);
+		
 		return new_rp;
 	}
 	
@@ -371,6 +370,15 @@ public class RulePackage {
 
 		RDFSubGraphSet sg_set = sqe.getTriplesByCNF(cls);
 		return sg_set;
+	}
+	
+	public String toString(){
+		String str = this._rule.toString();
+		str += " | ";
+		if (this._base_RP!=null){
+			str += this._base_RP._rule.toString();
+		}
+		return str;
 	}
 	
 	// ****************************************************************************

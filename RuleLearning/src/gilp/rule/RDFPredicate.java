@@ -224,5 +224,5 @@ public class RDFPredicate extends Predicate{
 		}
 		return t;
 	}
-	 
+
 }

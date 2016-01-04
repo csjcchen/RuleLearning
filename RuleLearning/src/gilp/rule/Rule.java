@@ -135,13 +135,14 @@ public abstract class Rule {
 	
 	//suppose r:  B -> H
 	// this returns B AND H
-	//The head H will be excluded if it is a special predicate, like isCorrect or isIncorrect. 
 	public Clause getCorrespondingClause() {
 		Clause cls = null;
 		cls = this.get_body().clone();
 		cls.addPredicate(this.get_head().clone());
 		return cls;
 	}
+	
+	
 				
 	protected static class PredicateComparator implements Comparator<Predicate>{
 		@Override

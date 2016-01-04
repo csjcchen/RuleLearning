@@ -66,19 +66,25 @@ public class RDFBFSLearner{
 				r.set_head(p.mapToCorrectPred()); 
 				r.set_body(new ClauseSimpleImpl());
 				RulePackage inclusive_rp = new RulePackage(r, this._fb, null);
-				rulePool.add(inclusive_rp);
+				rulePool.addAll(expandRule(inclusive_rp));
+				//rulePool.add(inclusive_rp);
 				
 				//an exclusive rule
 				RulePackage exclusive_rp = inclusive_rp.clone();
 				r = r.clone();
 				r.set_head(p.mapToIncorrectPred());
 				exclusive_rp.setRule(r);	
-				rulePool.add(exclusive_rp);
+				rulePool.addAll(expandRule(exclusive_rp));
+				//rulePool.add(exclusive_rp);
 			}
 		}
 		else {
 			rulePool.addAll(listRules);
 		}
+		
+		//prune rules which has very low quality
+		this.updateCandidates(rulePool);
+ 
 		return rulePool;
 	}
 	
@@ -105,7 +111,7 @@ public class RDFBFSLearner{
 		
 		PriorityQueue<RulePackage> listRlts =  new PriorityQueue<RulePackage>(this._k, new RulePHatDSCComparator());		
 
-		double tau = 0;
+		double tau = GILPSettings.MINIMUM_FOIL_GAIN;
 		while(!rulePool.isEmpty()){
 			RulePackage current_rule = rulePool.poll();
 			if ( current_rule.getRule().isQualified()){
@@ -123,11 +129,13 @@ public class RDFBFSLearner{
 				
 				current_rule.setExtended(false);
 				for (RulePackage child_rule : tempList){
-					if (!isPrunable(child_rule)){
+					if (child_rule.getQuality()>tau){
 						rulePool.add(child_rule);
 						current_rule.setExtended(true);
+						tau = updateCandidates(rulePool);
 					}	
 				}
+				
 				if (!current_rule.isExtended()){
 					//if a rule cannot be further specialized, we need to check whether it is qualified
 					listRlts.add(current_rule.clone());		
@@ -158,8 +166,35 @@ public class RDFBFSLearner{
 		return results;
 	}
 	
+	private ArrayList<RulePackage> expandRule(RulePackage rp){
+		ArrayList<RulePackage> listRlts = new ArrayList<>(); 
+		
+ 			//specialization by add more atoms				 
+		listRlts.addAll(addDanglingAtoms(rp));
+		listRlts.addAll(addInstantiatedAtoms(rp));
+		
+		return listRlts;
+	}
+	
+	//calculate and return the k^th highest quality score
+	// and remove all candidates with maximum scores lower than the computed threshold
+	private double updateCandidates(PriorityQueue<RulePackage> candidates) {
+		// the rule at the head is the least one
+		double tau = GILPSettings.MINIMUM_FOIL_GAIN;
+		if (candidates.size() <= this._k)
+			return tau;
+
+		while (candidates.size() > this._k) {
+			candidates.poll();
+		}
+		tau = candidates.peek().getQuality();
+		return tau;
+	}
+	
 	//check whether there exist any rules in the pool whose quality scores can be larger than @tau
 	private boolean existCandidatesInPool(PriorityQueue<RulePackage> pool, double tau){
+		if (pool.isEmpty()) return false;
+		
 		double pHat = pool.peek().getPHat();	 
 		double pre_part = Math.log(getBasePrecision())/Math.log(2.0); 
 		double hMax =  pHat *(0 - pre_part);//set nHat as zero, then precision is 1
@@ -307,11 +342,19 @@ public class RDFBFSLearner{
 			Triple t = cmt.get_triple();
 			if (!hmapPrediates.containsKey(t.get_predicate())){
 				hmapPrediates.put(t.get_predicate(),"");
+				
+				RDFPredicate atom = null;
+				atom = new RDFPredicate();
+				atom.setPredicateName(t.get_predicate());
+				atom.setSubject("?s");
+				atom.setObject("?o");						
+				listRlts.add(atom);
+				
 				//find constants in this predicate
 				ArrayList<String> sub_consts = findConstants(t.get_predicate(),1);
 				ArrayList<String> obj_consts = findConstants(t.get_predicate(),2);
 				
-				RDFPredicate atom = null;
+				
 				if (sub_consts.size()>0){
 					//for each const_subject, add P(a, ?o)
 					for (String con_str: sub_consts){
@@ -334,13 +377,9 @@ public class RDFBFSLearner{
 					}
 				}
 				
-				if (sub_consts.size()==0 && obj_consts.size()==0){
-					atom = new RDFPredicate();
-					atom.setPredicateName(t.get_predicate());
-					atom.setSubject("?s");
-					atom.setObject("?o");						
-					listRlts.add(atom);
-				} 
+				//if (sub_consts.size()==0 && obj_consts.size()==0){
+				
+				//} 
 			}
 		}
 		 

@@ -78,18 +78,31 @@ public class PGEngine implements QueryEngine {
 		StringBuffer sb_from = new StringBuffer(" from ");
 		StringBuffer sb_where = new StringBuffer(" where ");
 		
-		
-		ArrayList<String> listPredicates = new ArrayList<String>(); 
+		HashMap<String, Integer> hmap_preds = new HashMap<>(); 
+		//ArrayList<String> listPredicates = new ArrayList<String>(); 
 		HashMap<String,ArrayList<JoinedPredicate>> hmapJoins = new HashMap<String,ArrayList<JoinedPredicate>>();
 				
 		Iterator<Predicate> tpIterator = cls.getIterator();
 		while(tpIterator.hasNext()){
 			RDFPredicate tp = (RDFPredicate)tpIterator.next();
-			sb_from.append(tp.getPredicateName()).append(" , ");			
 			
-			if (!listPredicates.contains(tp.getPredicateName())){
-				listPredicates.add(tp.getPredicateName());
+			String prop_name = tp.getPredicateName();
+			if(!hmap_preds.containsKey(tp.getPredicateName())){
+				hmap_preds.put(prop_name, 1);
+				prop_name += "_1";
 			}
+			else{
+				int num = hmap_preds.get(prop_name);
+				num += 1; 
+				hmap_preds.put(prop_name, num);
+				prop_name += ("_" + num);
+			}			
+			
+			sb_from.append(tp.getPredicateName()+ " as ").append(prop_name).append(" , ");			
+			
+			//if (!listPredicates.contains(tp.getPredicateName())){
+			//	listPredicates.add(tp.getPredicateName());
+			//}
 			
 			if (tp.isSubjectVariable()){
 				ArrayList<JoinedPredicate> joinedPredicates = hmapJoins.get(tp.getSubject());
@@ -97,11 +110,11 @@ public class PGEngine implements QueryEngine {
 					joinedPredicates = new ArrayList<JoinedPredicate>();
 					hmapJoins.put(tp.getSubject(), joinedPredicates);
 				}
-				joinedPredicates.add(new JoinedPredicate(tp.getPredicateName(),"s"));				
+				joinedPredicates.add(new JoinedPredicate(prop_name,"s"));				
 			}
 			else{
 				//s is a constant
-				sb_where.append(tp.getPredicateName() + ".s='" + tp.getSubject()+"'");
+				sb_where.append(prop_name + ".s='" + tp.getSubject()+"'");
 				sb_where.append(" and ");
 			}
 			
@@ -111,11 +124,11 @@ public class PGEngine implements QueryEngine {
 					joinedPredicates = new ArrayList<JoinedPredicate>();
 					hmapJoins.put(tp.getObject(), joinedPredicates);
 				}
-				joinedPredicates.add(new JoinedPredicate(tp.getPredicateName(),"o"));
+				joinedPredicates.add(new JoinedPredicate(prop_name,"o"));
 			}			
 			else{
 				//o is a constant
-				sb_where.append(tp.getPredicateName() + ".o='" + tp.getObject()+"'");
+				sb_where.append(prop_name + ".o='" + tp.getObject()+"'");
 				sb_where.append(" and ");
 			}
 		}
@@ -350,6 +363,12 @@ public class PGEngine implements QueryEngine {
 		}
 		return true;
 	}
+	
+	public RDFSubGraphSet getTriplesByCNF(Clause cls, int num){
+		String sql = this.buildSQL(cls);
+		sql += "  limit " + num; 
+		return doQuery(cls, sql);
+	}
 
 	@Override
 	public RDFSubGraphSet getTriplesByCNF(Clause cls) {
@@ -363,11 +382,13 @@ public class PGEngine implements QueryEngine {
 		Connection conn = null;
 		PreparedStatement pstmt = null;
 		ResultSet rs = null;				 
+		RDFSubGraphSet sg_set = null;
 		try
 		{
 			conn = DBController.getConn();
 			pstmt = conn.prepareStatement(query);			 
 			rs = pstmt.executeQuery();			 
+			sg_set =  mountSGSet(rs, cls);
 				
 		}catch (Exception e)
 		{
@@ -378,13 +399,13 @@ public class PGEngine implements QueryEngine {
 		{
 			DBPool.closeAll(conn, pstmt, rs);
 		}	
-		return mountSGSet(rs, cls);		
+		return sg_set;
 	}
 
 	
 	// This function will mount sug-graphs based on the tuples returned by PG and clause (pattern of the sub-graphs).
 	// The columns returned by PG are ordered in the same way as they appear in the cls. 
-	// Every 2 columns correspond to a predicate. 	
+	// Every 3 columns (tid, s, o) correspond to a predicate . 	
 	private RDFSubGraphSet mountSGSet(java.sql.ResultSet rlt, Clause cls) {
 		
 		Iterator<Predicate> myIter = cls.getIterator();
@@ -406,8 +427,8 @@ public class PGEngine implements QueryEngine {
 					RDFPredicate tp = preds.get(i);
 					Triple t = new Triple();
 					t.set_predicate(tp.getPredicateName());
-					t.set_subject(rlt.getString(i*2+1));
-					t.set_obj(rlt.getString(i*2+2));
+					t.set_subject(rlt.getString(i*3+2));
+					t.set_obj(rlt.getString(i*3+3));
 					sg.addTriple(t);
 				}
 				sg_set.addSubGraph(sg);
@@ -528,7 +549,7 @@ public class PGEngine implements QueryEngine {
 	}
 	
 	public static void main(String[] args){
-		testPNHats();		
+		testSimpleQuery();		
 	}
 
 }
