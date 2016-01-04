@@ -1,0 +1,12 @@
+<Deng_Xiaoping>	<hasNationality>	<Chinese>
+<Barack_Obama>	<hasNationality>	<USA>
+<Xi_Jinping>	<hasNationality>	<Chinese>
+<Hu_Jintao>	<hasNationality>	<Chinese>
+<Deng_Xiaoping>	<hasGivenName>	<Deng>
+<Deng_Xiaoping>	<hasFamilyName>	<Deng>
+<Barack_Obama>	<hasGivenName>	<Barack>
+<Barack_Obama>	<hasFamilyName>	<Obama>
+<Xi_Jinping>	<hasGivenName>	<Xi>
+<Xi_Jinping>	<hasFamilyName>	<Xi>
+<Hu_Jintao>	<hasGivenName>	<Hu>
+<Hu_Jintao>	<hasFamilyName>	<Hu>
