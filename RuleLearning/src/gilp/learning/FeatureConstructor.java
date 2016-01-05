@@ -54,8 +54,7 @@ public class FeatureConstructor {
 	 * rule, and extract frequent patterns from these joined sub-graphs.
 	 */
 	public ArrayList<ExpRulePackage> constructFeatures() {
-		ArrayList<String> pred_names = new ArrayList<>();//GILPSettings.getAllPredicateNames();
-		pred_names.add("rdftype");
+		ArrayList<String> pred_names = GILPSettings.getAllPredicateNames();
 		RDFRuleImpl r0 = this._baseRP.getRule();	
 		ArrayList<String> args = r0.getArguments();
 		
@@ -83,6 +82,7 @@ public class FeatureConstructor {
 				tp.setSubject(U);//subject is shared with r0
 				tp.setObject(var);
 				tau = expand(tp, candidates, tau); 
+				System.out.println("trying " + pr_name + " for " + U);
 			}
 		}		
 		
@@ -133,22 +133,7 @@ public class FeatureConstructor {
 	
 	//TODO make it as a general function and put into a Class like QualityEvaluator
 	double calc_foil_gain(double p_hat, double n_hat){
-		if (p_hat<GILPSettings.EPSILON){
-			return 0;
-		}
-		
-		double prec_new = p_hat/(p_hat + n_hat);
-		
-		double pre_part = 0; 
-		if (this._P<GILPSettings.EPSILON){
-			pre_part = 0;
-		}
-		else{
-			double prec_old = this._P/(this._P + this._N);
-			pre_part = Math.log(prec_old)/Math.log(2.0); 
-		}
-		
-		return p_hat *(Math.log(prec_new)/Math.log(2.0) - pre_part);
+		return RulePackageFactory.calc_foil_gain(p_hat, n_hat, this._P, this._N);
 	}
 	
 	//calculate and return the k^th highest quality score and remove all candidates with scores lower than the computed threshold

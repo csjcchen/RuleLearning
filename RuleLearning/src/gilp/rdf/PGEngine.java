@@ -152,7 +152,11 @@ public class PGEngine implements QueryEngine {
 		String from = sb_from.toString();
 		from = from.substring(0, from.lastIndexOf(",")-1);
 		String where = sb_where.toString();
-		where = where.substring(0, where.lastIndexOf("and")-1);
+		if (where.indexOf("and")>=0)
+			where = where.substring(0, where.lastIndexOf("and")-1);
+
+		if (where.indexOf("=")<0)
+			where = "";
 		
 		return sb_head.toString() + from + where;
 	}
@@ -386,7 +390,7 @@ public class PGEngine implements QueryEngine {
 		try
 		{
 			conn = DBController.getConn();
-			pstmt = conn.prepareStatement(query);			 
+			pstmt = conn.prepareStatement(query);		 
 			rs = pstmt.executeQuery();			 
 			sg_set =  mountSGSet(rs, cls);
 				

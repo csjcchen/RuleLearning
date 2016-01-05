@@ -248,6 +248,28 @@ public class RDFRuleImpl extends Rule {
 			cls.addPredicate(h);
 		return cls;			
 	}
+	
+	//if the head contains a non-shared variable, the rule is non-safe
+	public boolean isSafe(){
+		HashMap<String, String> hmapVars = new HashMap<>(); 
+		Iterator<Predicate> iterPreds = this.get_body().getIterator();
+		while(iterPreds.hasNext()){
+			RDFPredicate tp = (RDFPredicate) iterPreds.next();
+			if(tp.isSubjectVariable())
+				hmapVars.put(tp.getSubject(), "");
+			if(tp.isObjectVariable())
+				hmapVars.put(tp.getObject(), "");
+		}
+		
+		if (this._head != null){
+			RDFPredicate tp = (RDFPredicate) this._head;
+			if (tp.isSubjectVariable() && !hmapVars.containsKey(tp.getSubject()))
+				return false;			
+			if (tp.isObjectVariable() && !hmapVars.containsKey(tp.getObject()))
+				return false;			
+		}
+		return true;
+	}
 	 
 	//****************************************************************************
 		

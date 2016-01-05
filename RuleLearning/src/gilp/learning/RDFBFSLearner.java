@@ -80,11 +80,7 @@ public class RDFBFSLearner{
 		}
 		else {
 			rulePool.addAll(listRules);
-		}
-		
-		//prune rules which has very low quality
-		this.updateCandidates(rulePool);
- 
+		}		
 		return rulePool;
 	}
 	
@@ -109,30 +105,25 @@ public class RDFBFSLearner{
 			}
 		}
 		
-		PriorityQueue<RulePackage> listRlts =  new PriorityQueue<RulePackage>(this._k, new RulePHatDSCComparator());		
+		PriorityQueue<RulePackage> listRlts =  new PriorityQueue<RulePackage>(this._k, new RuleQualityComparator());		
 
 		double tau = GILPSettings.MINIMUM_FOIL_GAIN;
 		while(!rulePool.isEmpty()){
 			RulePackage current_rule = rulePool.poll();
 			if ( current_rule.getRule().isQualified()){
 				listRlts.add(current_rule.clone());	
-				tau = this.getThreshold(listRlts);
-				if (!existCandidatesInPool(rulePool, tau)){
-					break;
-				}
+				tau = this.getThreshold(listRlts);				
 			}
 			else{
 				//specialization by add more atoms				
-				ArrayList<RulePackage> tempList = addClosingAtoms(current_rule);
-				tempList.addAll(addDanglingAtoms(current_rule));
-				tempList.addAll(addInstantiatedAtoms(current_rule));
+				ArrayList<RulePackage> tempList = expandRule(current_rule);
 				
 				current_rule.setExtended(false);
 				for (RulePackage child_rule : tempList){
-					if (child_rule.getQuality()>tau){
+					double hMax = RulePackageFactory.calc_foil_gain(current_rule.getPHat(), 0, current_rule.getBaseRP());
+					if (hMax>tau){
 						rulePool.add(child_rule);
-						current_rule.setExtended(true);
-						tau = updateCandidates(rulePool);
+						current_rule.setExtended(true);						
 					}	
 				}
 				
@@ -140,11 +131,9 @@ public class RDFBFSLearner{
 					//if a rule cannot be further specialized, we need to check whether it is qualified
 					listRlts.add(current_rule.clone());		
 					tau = this.getThreshold(listRlts);
-					if (!existCandidatesInPool(rulePool, tau)){
-						break;
-					}
 				}
 			}
+			pruneCandidates(rulePool, tau);
 		}
 		
 		
@@ -152,10 +141,16 @@ public class RDFBFSLearner{
 			((RDFRuleImpl) r1.getRule()).normalize();				
 		}
 		ArrayList<RulePackage> results = new ArrayList<> ();
-		results.addAll(listRlts);
+	 	results.addAll(listRlts);
+		
+		for (RulePackage rp: listRlts){
+			if (rp.getQuality()<tau){
+				results.remove(rp);
+			}
+		}
 		
 		RulePackageFactory.removeDuplicatedRP(results);
-		
+
 		if (GILPSettings.IS_DEBUG){
 			System.out.println("learned rules:");
 			for(RulePackage r: results){
@@ -168,54 +163,65 @@ public class RDFBFSLearner{
 	
 	private ArrayList<RulePackage> expandRule(RulePackage rp){
 		ArrayList<RulePackage> listRlts = new ArrayList<>(); 
+		ArrayList<RulePackage> tempRlts = new ArrayList<>(); 
+ 			//specialization by add more atoms				
+		tempRlts.addAll(addClosingAtoms(rp));
+		tempRlts.addAll(addDanglingAtoms(rp));
+		tempRlts.addAll(addInstantiatedAtoms(rp));
 		
- 			//specialization by add more atoms				 
-		listRlts.addAll(addDanglingAtoms(rp));
-		listRlts.addAll(addInstantiatedAtoms(rp));
-		
+		for (RulePackage newRP: tempRlts){
+			if (newRP.getRule().isSafe())
+				listRlts.add(newRP);
+		}
 		return listRlts;
 	}
+	 
 	
-	//calculate and return the k^th highest quality score
-	// and remove all candidates with maximum scores lower than the computed threshold
-	private double updateCandidates(PriorityQueue<RulePackage> candidates) {
+	//remove all candidates with maximum scores lower than the computed threshold
+	//@candidates are sorted by their pHats  in descending order
+	private void pruneCandidates(PriorityQueue<RulePackage> candidates, double tau) {
 		// the rule at the head is the least one
-		double tau = GILPSettings.MINIMUM_FOIL_GAIN;
-		if (candidates.size() <= this._k)
-			return tau;
-
-		while (candidates.size() > this._k) {
-			candidates.poll();
+		ArrayList<RulePackage> tempList = new ArrayList<>();
+		while (!candidates.isEmpty()){
+			RulePackage rp = candidates.poll();
+			if (rp.getRule().isSafe()) {
+				double hMax = RulePackageFactory.calc_foil_gain(rp.getPHat(), 0, rp.getBaseRP());
+				if (hMax>tau)
+					tempList.add(rp);
+			}
 		}
-		tau = candidates.peek().getQuality();
-		return tau;
+		candidates.clear();
+		candidates.addAll(tempList);
 	}
 	
 	//check whether there exist any rules in the pool whose quality scores can be larger than @tau
 	private boolean existCandidatesInPool(PriorityQueue<RulePackage> pool, double tau){
 		if (pool.isEmpty()) return false;
-		
-		double pHat = pool.peek().getPHat();	 
-		double pre_part = Math.log(getBasePrecision())/Math.log(2.0); 
-		double hMax =  pHat *(0 - pre_part);//set nHat as zero, then precision is 1
+		RulePackage rp = pool.peek();
+		double hMax =  RulePackageFactory.calc_foil_gain(rp.getPHat(), 0, rp.getBaseRP());//set nHat as zero, then precision is 1
 		return hMax>tau;
 	}
 	
+	//@queue are sorted by their quality scores in ascending order 
 	private double getThreshold(PriorityQueue<RulePackage> queue){
 		if (queue.size()<= this._k)
 			return GILPSettings.MINIMUM_FOIL_GAIN;
 		else{
-			int count = 0;
+			
+			double tau = GILPSettings.MINIMUM_FOIL_GAIN;
+			if (queue.size() <= this._k)
+				return tau;
+			
 			ArrayList<RulePackage> temp_list = new ArrayList<>();
-			double th = 0;
-			while(++count<=this._k){
+			while (queue.size() > this._k) {
 				RulePackage rp = queue.poll();
-				th = rp.getQuality();
 				temp_list.add(rp);
 			}
+			tau = queue.peek().getQuality();
+			
 			queue.addAll(temp_list);
 			temp_list.clear();
-			return th;
+			return tau;
 		}
 	}
 	

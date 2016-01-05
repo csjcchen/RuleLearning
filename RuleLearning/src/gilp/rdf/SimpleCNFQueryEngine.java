@@ -100,7 +100,7 @@ public class SimpleCNFQueryEngine implements QueryEngine {
 						joined[i] = true;
 						num--;
 						break;
-					}
+					}					
 				}
 				if (!findJoin)
 					break;				

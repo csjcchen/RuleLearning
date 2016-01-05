@@ -83,6 +83,7 @@ public class Triple {
 			return false;
 		}
 		Triple t = (Triple)o;
+			
 		if(!this.get_subject().equals(t.get_subject()))
 			return false;
 		if (!this.get_obj().equals(t.get_obj()))

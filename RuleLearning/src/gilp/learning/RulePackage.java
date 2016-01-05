@@ -120,20 +120,8 @@ public class RulePackage {
 	
 	// P_plus * ( log_2 (prec) - log2 prec(phi_0)) )	 
 	//the gain w.r.t rp0
-	void calc_foil_gain() {
-		double q0 = 0;
-		if (this._base_RP == null)
-			q0 = Math.log(GILPSettings.MINIMUM_PRECISION)/Math.log(2.0); 
-		else if (!this._base_RP.getRule().isEmpty()) {
-			q0 = this._base_RP.getPrecision();
-			if (q0 > GILPSettings.EPSILON)
-				q0 = Math.log(q0) / Math.log(2.0);
-		}
-		
-		if (this.getPHat() < GILPSettings.EPSILON)
-			this._quality = 0;
-		else
-			this._quality = this.getPHat() * (Math.log(this.getPrecision()) / Math.log(2.0) - q0);
+	void calc_foil_gain() {		
+		this._quality = RulePackageFactory.calc_foil_gain(this.getPHat(), this.getNHat(), this._base_RP);
 	}
   
 	// precision = P_Hat / (P_Hat + N_Hat) 
@@ -249,17 +237,23 @@ public class RulePackage {
 		}
 		
 		RDFSubGraphSet sg_set = this.getSubgraphsCoveredByRule(); 
-		double cov = sg_set.getSubGraphs().size();
-		this._PHat = 0;
-		for (RDFSubGraph sg: sg_set.getSubGraphs()){
-			ArrayList<Triple> sg_triples = sg.getTriples();
-			Triple head_t = sg_triples.get(sg_triples.size()-1);
-				//the head triple must appear in the last position of a subgraph
-			
-			if (head_t!=null)
-				this._PHat += 1;//a valid head means this instantiation (subgraph) is covered by the rule			
-		} 
-		this._NHat = cov - this._PHat;
+		if (sg_set == null){
+			this._PHat = 0;
+			this._NHat = 0;
+		}
+		else{
+			double cov = sg_set.getSubGraphs().size();
+			this._PHat = 0;
+			for (RDFSubGraph sg: sg_set.getSubGraphs()){
+				ArrayList<Triple> sg_triples = sg.getTriples();
+				Triple head_t = sg_triples.get(sg_triples.size()-1);
+					//the head triple must appear in the last position of a subgraph
+				
+				if (head_t!=null)
+					this._PHat += 1;//a valid head means this instantiation (subgraph) is covered by the rule			
+			} 
+			this._NHat = cov - this._PHat;
+		}		
 	}
 	
 	public boolean isExtended(){
@@ -325,7 +319,7 @@ public class RulePackage {
 				list_binding.add(b);
 			}
 			
-			Triple t = no_prefix_head.bind(head_vars, list_binding); 
+			Triple t = no_prefix_head.bind(head_vars, list_binding);  
 			if (consistent_triples.contains(t)){
 				if (r.isInclusive())
 					sg.addTriple(t.mapToCorrectTriple());
