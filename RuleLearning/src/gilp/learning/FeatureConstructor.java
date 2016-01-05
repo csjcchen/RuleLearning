@@ -58,7 +58,7 @@ public class FeatureConstructor {
 		RDFRuleImpl r0 = this._baseRP.getRule();	
 		ArrayList<String> args = r0.getArguments();
 		
-		double tau = 0;			 
+		double tau = GILPSettings.MINIMUM_FOIL_GAIN;			 
 		PriorityQueue<ExpRulePackage> candidates = new PriorityQueue<ExpRulePackage>(10 * this._k, new RuleQualityComparator());		
 		ArrayList<ExpRulePackage> listRlts = new ArrayList<ExpRulePackage>(); 
 		for (String U: args){
@@ -81,8 +81,7 @@ public class FeatureConstructor {
 				tp.setPredicateName(pr_name);
 				tp.setSubject(U);//subject is shared with r0
 				tp.setObject(var);
-				tau = expand(tp, candidates, tau); 
-				System.out.println("trying " + pr_name + " for " + U);
+				tau = expand(tp, candidates, tau); 				
 			}
 		}		
 		
@@ -101,6 +100,8 @@ public class FeatureConstructor {
 		HashMap<String, Integer> hmapNHats = new HashMap<>();
 		 	
 		qe.getPHatNhats(this._baseRP, tp, listPHats, hmapNHats);
+		//if (tp.getPredicateName().indexOf("type")>=0)
+		//	this.getClass();
  		
 		for (KVPair<String, Integer> kv: listPHats){
 			String a = kv.get_key();

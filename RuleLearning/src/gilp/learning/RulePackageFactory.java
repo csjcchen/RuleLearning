@@ -20,15 +20,15 @@ public class RulePackageFactory {
 	}
 	
 	//stupid java!!!	
-	public static ArrayList<ExpRulePackage> chooseTopExpRP(ArrayList<ExpRulePackage> listCandidates, int k){		
-		ArrayList<RulePackage> temp_list = new ArrayList<>();
-		temp_list.addAll(listCandidates);
-		temp_list = chooseTopRP(temp_list, k);
-		ArrayList<ExpRulePackage> listRlts = new ArrayList<>();
-		for (RulePackage rp: temp_list){
-			listRlts.add((ExpRulePackage) rp);
+	public static ArrayList<ExpRulePackage> chooseTopExpRP(ArrayList<ExpRulePackage> listCandidates, int k){
+		
+		ExpRulePackage[] rules = (ExpRulePackage[]) listCandidates.toArray(new ExpRulePackage[0]);
+		Arrays.sort(rules, new RuleQualityComparator());
+		ArrayList<ExpRulePackage> listRlts = new ArrayList<>(); 
+		for (int i=rules.length-1;i>=Math.max(0, rules.length-k);i--){
+			listRlts.add(rules[i].clone());
 		}
-		return listRlts;
+		return listRlts;		 
 	}
 	
 	// clean duplicated rules

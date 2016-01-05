@@ -40,7 +40,17 @@ public class ExpRulePackage extends RulePackage {
 	@Override
 	public double getNHat() {
 		return _NHat;
-	}		
+	}
+	
+	public ExpRulePackage clone(){
+		ExpRulePackage new_rp = null;
+		if (this._base_RP!=null)
+			new_rp = new ExpRulePackage(this._rule.clone(),this._base_RP.clone(), this._PHat, this._NHat);
+		else
+			new_rp = new ExpRulePackage(this._rule.clone(),null, this._PHat, this._NHat);
+		
+		return new_rp;
+	}
 	
 	@Override
 	@Deprecated

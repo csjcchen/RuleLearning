@@ -287,7 +287,7 @@ public class PGEngine implements QueryEngine {
 		//sql = sql.substring(0, sql.lastIndexOf(","));
 		sql += ")"; 
 		
-		System.out.println(sql);
+		//System.out.println(sql);
 		
 		if (!DBController.exec_update(sql)){
 			GILPSettings.log(this.getClass().getName() + " there is error when creating table consistent.");
@@ -307,7 +307,7 @@ public class PGEngine implements QueryEngine {
 			sql = sql.substring(0, sql.lastIndexOf(","));
 			sql += ")"; 
 			
-			System.out.println(sql);
+			//System.out.println(sql);
 			
 			if (!DBController.exec_update(sql)){
 				GILPSettings.log(this.getClass().getName() + " there is error when inserting tuples into table consistent.");
@@ -354,9 +354,12 @@ public class PGEngine implements QueryEngine {
 		sql += " group by " + aggregate_att; 
 		sql += " order by PHat desc, COV" ; 
 		
-		System.out.println(sql);
+		//System.out.println(sql);
 		
 		ArrayList<ArrayList<String>> listTuples = DBController.getTuples(sql);
+		if (listTuples == null)
+			return true;
+		
 		//constant, PHat, COV
 		for(ArrayList<String> tuple: listTuples){
 			String val = tuple.get(0);

@@ -48,7 +48,7 @@ public class Simulator {
 		
 		Feedback fb = fb_gen.getRandomComments(num_comments);
 		
-		RDFBFSLearner learner = new RDFBFSLearner(fb, k); 		
+		RDFBFSLearner learner = null; 		
 		
 		ArrayList<RulePackage> candi_rules = new ArrayList<>();  
 		
@@ -56,6 +56,7 @@ public class Simulator {
 		
 		HashMap<String, String> hmapPreRules = new HashMap<String,String>();
 		while(true){
+			learner = new RDFBFSLearner(fb, k);
 			
 			for(RulePackage rp: candi_rules){
 				System.out.println(rp.getRule());

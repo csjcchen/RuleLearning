@@ -99,10 +99,10 @@ public class RDFBFSLearner{
 		PriorityQueue<RulePackage> rulePool =  initilize_pool(listRules);
 		
 		if (GILPSettings.IS_DEBUG){
-			System.out.println("initial rules:");
-			for(RulePackage rp: rulePool){
-				System.out.println(rp.getRule());
-			}
+			//System.out.println("initial rules:");
+			//for(RulePackage rp: rulePool){
+			//	System.out.println(rp.getRule());
+			//}
 		}
 		
 		PriorityQueue<RulePackage> listRlts =  new PriorityQueue<RulePackage>(this._k, new RuleQualityComparator());		
@@ -110,29 +110,27 @@ public class RDFBFSLearner{
 		double tau = GILPSettings.MINIMUM_FOIL_GAIN;
 		while(!rulePool.isEmpty()){
 			RulePackage current_rule = rulePool.poll();
-			if ( current_rule.getRule().isQualified()){
-				listRlts.add(current_rule.clone());	
-				tau = this.getThreshold(listRlts);				
-			}
-			else{
-				//specialization by add more atoms				
-				ArrayList<RulePackage> tempList = expandRule(current_rule);
-				
-				current_rule.setExtended(false);
-				for (RulePackage child_rule : tempList){
-					double hMax = RulePackageFactory.calc_foil_gain(current_rule.getPHat(), 0, current_rule.getBaseRP());
-					if (hMax>tau){
-						rulePool.add(child_rule);
-						current_rule.setExtended(true);						
-					}	
-				}
-				
-				if (!current_rule.isExtended()){
-					//if a rule cannot be further specialized, we need to check whether it is qualified
-					listRlts.add(current_rule.clone());		
+			listRlts.add(current_rule.clone());	
+			tau = this.getThreshold(listRlts);				
+			
+			if(current_rule.getRule().isQualified())
+				continue;
+			
+			
+			//specialization by add more atoms				
+			ArrayList<RulePackage> tempList = expandRule(current_rule);
+
+			current_rule.setExtended(false);
+			for (RulePackage child_rule : tempList) {
+				double hMax = RulePackageFactory.calc_foil_gain(current_rule.getPHat(), 0, current_rule.getBaseRP());
+				if (hMax > tau) {
+					rulePool.add(child_rule);
+					current_rule.setExtended(true);
+					listRlts.add(child_rule.clone());	
 					tau = this.getThreshold(listRlts);
 				}
-			}
+			}	
+
 			pruneCandidates(rulePool, tau);
 		}
 		
