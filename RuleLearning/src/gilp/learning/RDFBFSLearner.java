@@ -56,7 +56,7 @@ public class RDFBFSLearner{
 		// a temporary variable
 		
 		// if the @listRules is empty, we then need to initialize the rulePool by the atoms
-		if (listRules.size() == 0) {
+		//if (listRules.size() == 0) {
 				// initialize the rule pool by the atoms extracted from the feedbacks
 			for (RDFPredicate p : this._fb_atoms) {
 					// for each aotm p, we generate two initial rules
@@ -77,10 +77,10 @@ public class RDFBFSLearner{
 				rulePool.addAll(expandRule(exclusive_rp));
 				//rulePool.add(exclusive_rp);
 			}
-		}
-		else {
-			rulePool.addAll(listRules);
-		}		
+		//}
+		//else {
+		//	rulePool.addAll(listRules);
+		//}		
 		return rulePool;
 	}
 	
@@ -90,10 +90,6 @@ public class RDFBFSLearner{
 		this._fb_atoms = extractAtoms();	
 	}
 	
-	private double getBasePrecision(){
-		return GILPSettings.MINIMUM_PRECISION;
-	}
-
 	public ArrayList<RulePackage> learn_rule(ArrayList<RulePackage> listRules) {		 
 			
 		PriorityQueue<RulePackage> rulePool =  initilize_pool(listRules);

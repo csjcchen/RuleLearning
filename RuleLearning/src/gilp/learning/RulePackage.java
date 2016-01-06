@@ -121,6 +121,8 @@ public class RulePackage {
 	// P_plus * ( log_2 (prec) - log2 prec(phi_0)) )	 
 	//the gain w.r.t rp0
 	void calc_foil_gain() {		
+		if (this.getRule().containPredicate("isCitizenOf"))
+			this.getClass();
 		this._quality = RulePackageFactory.calc_foil_gain(this.getPHat(), this.getNHat(), this._base_RP);
 	}
   
