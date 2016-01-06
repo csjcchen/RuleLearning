@@ -56,7 +56,7 @@ public class RDFBFSLearner{
 		// a temporary variable
 		
 		// if the @listRules is empty, we then need to initialize the rulePool by the atoms
-		//if (listRules.size() == 0) {
+		if (listRules.size() == 0) {
 				// initialize the rule pool by the atoms extracted from the feedbacks
 			for (RDFPredicate p : this._fb_atoms) {
 					// for each aotm p, we generate two initial rules
@@ -77,10 +77,10 @@ public class RDFBFSLearner{
 				rulePool.addAll(expandRule(exclusive_rp));
 				//rulePool.add(exclusive_rp);
 			}
-		//}
-		//else {
-		//	rulePool.addAll(listRules);
-		//}		
+		}
+		else {
+			rulePool.addAll(listRules);
+		}		
 		return rulePool;
 	}
 	
@@ -118,7 +118,7 @@ public class RDFBFSLearner{
 
 			current_rule.setExtended(false);
 			for (RulePackage child_rule : tempList) {
-				double hMax = RulePackageFactory.calc_foil_gain(current_rule.getPHat(), 0, current_rule.getBaseRP());
+				double hMax = QualityManager.evalQuality(current_rule.getPHat(), 0);
 				if (hMax > tau) {
 					rulePool.add(child_rule);
 					current_rule.setExtended(true);
@@ -179,7 +179,7 @@ public class RDFBFSLearner{
 		while (!candidates.isEmpty()){
 			RulePackage rp = candidates.poll();
 			if (rp.getRule().isSafe()) {
-				double hMax = RulePackageFactory.calc_foil_gain(rp.getPHat(), 0, rp.getBaseRP());
+				double hMax = QualityManager.evalQuality(rp.getPHat(), 0);
 				if (hMax>tau)
 					tempList.add(rp);
 			}
@@ -192,7 +192,7 @@ public class RDFBFSLearner{
 	private boolean existCandidatesInPool(PriorityQueue<RulePackage> pool, double tau){
 		if (pool.isEmpty()) return false;
 		RulePackage rp = pool.peek();
-		double hMax =  RulePackageFactory.calc_foil_gain(rp.getPHat(), 0, rp.getBaseRP());//set nHat as zero, then precision is 1
+		double hMax =  QualityManager.evalQuality(rp.getPHat(), 0);//set nHat as zero, then precision is 1
 		return hMax>tau;
 	}
 	

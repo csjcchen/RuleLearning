@@ -107,8 +107,8 @@ public class FeatureConstructor {
 			String a = kv.get_key();
 			double p_hat = (double)kv.get_value();
 			double n_hat = (double)hmapNHats.get(a);
-			double h = this.calc_foil_gain(p_hat, n_hat); 
-			double h_max = calc_foil_gain(p_hat, 0); 
+			double h = QualityManager.evalQuality(p_hat, n_hat); 
+			double h_max = QualityManager.evalQuality(p_hat, 0); 
 			if (h_max < tau)
 				break; //the remaining features cannot have scores larger than tau
 
@@ -131,11 +131,7 @@ public class FeatureConstructor {
 		} 
 		return tau;
 	}	
-	
-	//TODO make it as a general function and put into a Class like QualityEvaluator
-	double calc_foil_gain(double p_hat, double n_hat){
-		return RulePackageFactory.calc_foil_gain(p_hat, n_hat, this._P, this._N);
-	}
+	 
 	
 	//calculate and return the k^th highest quality score and remove all candidates with scores lower than the computed threshold
 	private double updateCandidates(PriorityQueue<ExpRulePackage> candidates){

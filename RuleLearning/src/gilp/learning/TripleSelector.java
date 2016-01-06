@@ -5,6 +5,7 @@ import java.util.ArrayList;
 import gilp.feedback.Feedback;
 import gilp.rdf.PGEngine;
 import gilp.rdf.RDF3XEngine;
+import gilp.rdf.RDFSubGraph;
 import gilp.rdf.RDFSubGraphSet;
 import gilp.rdf.Triple;
 import gilp.rule.*; 
@@ -19,13 +20,13 @@ public class TripleSelector {
 		//TODO we need some limitations on the number of total triples we want to probe
 		ArrayList<Triple> listRlts = new ArrayList<Triple>();
 		for (RulePackage rp: listRules){
+			int n1 = calcRequiredNum(rp);
+			int n2 = rp.getRule().get_body().getBodyLength() * 5;
+			int n = Math.min(n1, n2);
+			listRlts.addAll(sampleTriples(rp.getRule(),n));
 			if (rp.getRule().isTooGeneral()){
 				listRlts.addAll(selectExtendedTriples(rp));
-			}
-			else{
-				int n = calcRequiredNum(rp);
-				listRlts.addAll(sampleTriples(rp.getRule(),n));
-			}
+			} 
 		}
 		return listRlts;
 	}
@@ -33,7 +34,7 @@ public class TripleSelector {
 	
 	ArrayList<Triple> selectExtendedTriples(RulePackage rp){
 		//TODO n should not be an independent parameter, and should be adjusted according to an overall resource limit
-		int n = 10;	//# of samples for each rule
+		int n = 5;	//# of samples for each rule
 		int k= 3; // # of rules we choose from candidate extensions
 		//TODO need to make k a global setting
 		RDFRuleImpl rdf_r = rp.getRule();
@@ -70,12 +71,6 @@ public class TripleSelector {
 	
 	//randomly choose @n triples from those covered by @r in the KB
 	ArrayList<Triple> sampleTriples(Rule r, int n){
-		//TODO: The current implementation is in-efficient because it needs to 
-		//retrieve all triples covered by @r from KB and make the sampling.
-		//we'd better utilize query engine to do the sampling.
-		//Unfortunately, RDF3X does not support limit or random()
-		//A not-good solution, retrieves 10*n triples from RDF3x
-		
 		PGEngine qe = new PGEngine();
 		
 		Clause cls = ((RDFRuleImpl)r).getNoprefixCaluse(); 
@@ -84,25 +79,42 @@ public class TripleSelector {
 		RDFSubGraphSet sg_set = qe.getTriplesByCNF(cls, 10*n); 
 		if(sg_set == null)
 			return null;
-		//find all triples covered by @r in the KB
-		ArrayList<Triple> all_covered_triples = sg_set.getAllTriples();
-		//initialize all triples as not been chosen
-		int s = all_covered_triples.size(); 
+		ArrayList<RDFSubGraph> listSGs = sg_set.getSubGraphs();
+		
+		int s = listSGs.size(); 
 		int[] isChosen = new int[s];
 		for(int i=0;i<s;i++){
 			isChosen[i] = 0;
 		}
-		
-		
-		ArrayList<Triple> sampled_triples = new ArrayList<Triple> (); 
-		
+		ArrayList<Triple> sampled_triples = new ArrayList<Triple> ();
 		while(sampled_triples.size()<Math.min(s, n)){
 			int idx = (int)Math.round(Math.random()*(s-1));
 			if (isChosen[idx] == 0){
-				sampled_triples.add(all_covered_triples.get(idx));
+				RDFSubGraph sg = listSGs.get(idx);				
+				sampled_triples.addAll(sg.getTriples());
 				isChosen[idx] = 1;
 			}	
 		}
+		
+		//find all triples covered by @r in the KB
+		//ArrayList<Triple> all_covered_triples = sg_set.getAllTriples();
+		//initialize all triples as not been chosen
+		//int s = all_covered_triples.size(); 
+		//int[] isChosen = new int[s];
+	//	for(int i=0;i<s;i++){
+		//	isChosen[i] = 0;
+		//}
+		
+		
+		 
+		
+		//while(sampled_triples.size()<Math.min(s, n)){
+		//	int idx = (int)Math.round(Math.random()*(s-1));
+		//	if (isChosen[idx] == 0){
+			//	sampled_triples.add(all_covered_triples.get(idx));
+			//	isChosen[idx] = 1;
+			//}	
+		//}
 		
 		return sampled_triples;
 	}

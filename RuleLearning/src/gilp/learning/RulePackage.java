@@ -82,7 +82,7 @@ public class RulePackage {
 		
 	public double getQuality() {
 		if (this._quality<0)
-			this.calc_foil_gain();		
+			this.calc_quality();		
 		return _quality;
 	}	 
 
@@ -120,10 +120,10 @@ public class RulePackage {
 	
 	// P_plus * ( log_2 (prec) - log2 prec(phi_0)) )	 
 	//the gain w.r.t rp0
-	void calc_foil_gain() {		
-		if (this.getRule().containPredicate("isCitizenOf"))
+	void calc_quality() {		
+		if (this.getRule().get_body().getBodyLength()>=2  && this.getRule().toString().indexOf("China")>=0)
 			this.getClass();
-		this._quality = RulePackageFactory.calc_foil_gain(this.getPHat(), this.getNHat(), this._base_RP);
+		this._quality = QualityManager.evalQuality(this.getPHat(), this.getNHat());
 	}
   
 	// precision = P_Hat / (P_Hat + N_Hat) 

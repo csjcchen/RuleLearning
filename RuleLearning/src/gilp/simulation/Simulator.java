@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
 
+import gilp.feedback.Comment;
 import gilp.feedback.Feedback;
 import gilp.rdf.Triple;
 import gilp.rule.Clause;
@@ -41,7 +42,7 @@ public class Simulator {
  
 	void simulate(){
 		int num_comments = 5; //number of initial comments 
-		int k = 3;//top-k best rules
+		int k = 1;//top-k best rules
 		
 		FeedbackGenerator fb_gen = new FeedbackGenerator(); 
 		TripleSelector triple_sel = new TripleSelector();
@@ -59,7 +60,7 @@ public class Simulator {
 			learner = new RDFBFSLearner(fb, k);
 			
 			for(RulePackage rp: candi_rules){
-				System.out.println(rp.getRule());
+				//System.out.println(rp.getRule());
 				hmapPreRules.put(rp.getRule().toString(), "");
 			}
 			
@@ -84,8 +85,11 @@ public class Simulator {
 			candi_rules = RulePackageFactory.chooseTopRP(candi_rules , k);
 			
 			ArrayList<Triple> probing_triples = triple_sel.selectTriples(candi_rules, fb);
-			
-			fb = fb_gen.getComments(probing_triples);
+			Feedback new_fb = fb_gen.getComments(probing_triples);
+			for (Comment cmt: new_fb.get_comments()){
+				if (!fb.get_comments().contains(cmt))
+					fb.get_comments().add(cmt);
+			}
 		}
 		
 		for (RulePackage rp1: listQualifiedRules){				

@@ -23,20 +23,21 @@ public class FeedbackGenerator {
 	void initialize(){
 		this._known_comments = new ArrayList<Comment>();
 		/*current solution is simple: we predefined several rules, and regard the corresponding triples are incorrect*/
+		ArrayList<Triple> listTriples = null;
 		Clause cls_chinese = new ClauseSimpleImpl(); 
 		cls_chinese.addPredicate(new RDFPredicate("?s", "hasGivenName", "?o"));
 		cls_chinese.addPredicate(new RDFPredicate("?s", "isCitizenOf", "China"));
 		
-		ArrayList<Triple> listTriples = retrieveTriples(cls_chinese, "hasGivenName");
+		listTriples = retrieveTriples(cls_chinese, "hasGivenName");
 		this._known_comments.addAll(buildComments(listTriples, false)); 
 		
-		Clause cls_us = new ClauseSimpleImpl(); 
+		/*Clause cls_us = new ClauseSimpleImpl(); 
 		cls_us.addPredicate(new RDFPredicate("?s", "hasGivenName", "?o"));
 		cls_us.addPredicate(new RDFPredicate("?s", "isCitizenOf", "Hungary"));
 		
 		listTriples = retrieveTriples(cls_us, "hasGivenName");
 		this._known_comments.addAll(buildComments(listTriples, true)); 
-		
+		*/
 		/*Clause cls_sh = new ClauseSimpleImpl(); 
 		cls_sh.addPredicate(new RDFPredicate("?s", "hasGivenName", "?o"));
 		cls_sh.addPredicate(new RDFPredicate("?s", "wasBornIn", "Shanghai"));
