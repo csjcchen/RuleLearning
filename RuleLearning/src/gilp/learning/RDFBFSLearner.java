@@ -93,14 +93,7 @@ public class RDFBFSLearner{
 	public ArrayList<RulePackage> learn_rule(ArrayList<RulePackage> listRules) {		 
 			
 		PriorityQueue<RulePackage> rulePool =  initilize_pool(listRules);
-		
-		if (GILPSettings.IS_DEBUG){
-			//System.out.println("initial rules:");
-			//for(RulePackage rp: rulePool){
-			//	System.out.println(rp.getRule());
-			//}
-		}
-		
+				
 		PriorityQueue<RulePackage> listRlts =  new PriorityQueue<RulePackage>(this._k, new RuleQualityComparator());		
 
 		double tau = GILPSettings.MINIMUM_FOIL_GAIN;

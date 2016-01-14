@@ -34,6 +34,15 @@ public class DBController {
 		return null;
 	} 
 	
+	public static String getSingleValue(String qry){
+		ArrayList<ArrayList<String>> rlts = getTuples(qry);
+		if(rlts == null)
+			return null;
+		if (rlts.size()==0)
+			return null;
+		return rlts.get(0).get(0);
+	}
+	
 	public static ArrayList<ArrayList<String>> getTuples(String qry){
 		 
 		Connection con = DBPool.getConnection();
@@ -63,7 +72,7 @@ public class DBController {
 		return rlts;
 	}
 	
-	public static Connection getConn(){  //鑾峰彇鏁版嵁搴撹繛鎺ユ柟娉�
+	public static Connection getConn(){   
 		Connection conn=DBPool.getConnection();
 		return conn;
 	}

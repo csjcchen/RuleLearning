@@ -29,7 +29,7 @@ public class DBPool {
 		pool_prop.setTimeBetweenEvictionRunsMillis(30000);
 		pool_prop.setMaxActive(200);
 		pool_prop.setInitialSize(10);
-		pool_prop.setMaxWait(10000);
+		pool_prop.setMaxWait(100000);
 		pool_prop.setRemoveAbandonedTimeout(60);
 		pool_prop.setMinEvictableIdleTimeMillis(30000);
 		pool_prop.setMinIdle(10);

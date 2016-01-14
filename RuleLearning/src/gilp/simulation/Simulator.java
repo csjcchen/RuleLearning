@@ -72,7 +72,7 @@ public class Simulator {
 			
 			while(ruleIter.hasNext()){
 				RulePackage rp = ruleIter.next();
-				if (hmapPreRules.containsKey(rp.getRule().toString())){
+				if(!rp.getRule().isTooGeneral() || hmapPreRules.containsKey(rp.getRule().toString())){
 					System.out.println("this rule cannot be further extended:" + rp.getRule());
 					listQualifiedRules.add(rp);
 					ruleIter.remove();					

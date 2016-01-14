@@ -35,7 +35,15 @@ public class GILPSettings {
 		//A constant can be regarded as a frequent constant and be adopted in building a new feature, only if 
 		//it appears in more than FREQUENT_CONST_IN_DB*100 percents in all triples in DB with an identical predicate.  
 		//TODO this parameter may be related to the COVERAGE_IN_FB
- 
+	
+	public static int NUM_RDFTYPE_PARTITIONS = 9;
+		//there are NUM_RDFTYPE_PARTITIONS tables in the kb. E.g., NUM_RDFTYPE_PARTITIONS=9, rdftype0, ..., rdftype8 
+	
+	public static double MINIMUM_SELECTIVITY = 1.0E-10;
+	
+	public static int MINIMUM_MAX_MATCHED = 1;
+	
+	
 	public static double LAMBDA;
 		//the parameter to trade-off between support scores of DB and feedback 
 	

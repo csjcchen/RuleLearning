@@ -275,7 +275,32 @@ public class PGEngine implements QueryEngine {
 				}
 			}
 		}
-			
+		
+		//check the selectivity table first
+		// JoinSelect(condition1, condition2, selc, maxMatched)
+		String query = "select maxMatched from JoinSelect where ";
+		String cond1 = new String(joinedPropInRule); 
+		cond1 = cond1.substring(0, cond1.indexOf("_")); 
+		cond1 += joinedPropInRule.substring(joinedPropInRule.length()-2);
+		String cond2 = tp.getPredicateName() + "_" + joinedPositionInTP; 
+		if (cond1.compareToIgnoreCase(cond2)>0){
+			String temp = cond1;
+			cond1 = cond2;
+			cond2 = temp;
+		}
+		query += " condition1='" + cond1 + "' and condition2='" + cond2 + "'"; 
+		String rlt = DBController.getSingleValue(query);
+		if (rlt == null){
+			return true;
+		}
+		else{
+			int maxMatched = Integer.parseInt(rlt);
+			if (maxMatched<= GILPSettings.MINIMUM_MAX_MATCHED){
+				return true;
+			}
+		}
+		
+ 			
 		if(!findJoinedArgument){
 			GILPSettings.log(this.getClass().getName() + " there are no common arguments between the original rule and the predicate.");
 			return false;
