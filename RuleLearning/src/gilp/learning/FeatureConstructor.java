@@ -66,7 +66,9 @@ public class FeatureConstructor {
 				//TODO: construct a new extended feature as R(U,V) and add it to the candidates
 				//Now, just ignore this!!!			
 			//}			
-			for (String pr_name : pred_names){					
+			for (String pr_name : pred_names){		
+				//TODO special logic for rdftype 
+				
 				//introduce a new variable in the subject
 				String var =  r0.getNextSubjectVar(false);
 				RDFPredicate tp = new RDFPredicate(); 

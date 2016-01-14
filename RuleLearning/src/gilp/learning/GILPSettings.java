@@ -104,7 +104,12 @@ public class GILPSettings {
 				_all_predicates = new ArrayList<String>();
 				String line = null;
 				while((line = file.readLine())!=null){
-					_all_predicates.add(line);
+					if (line.startsWith("rdftype")){
+						for (int i=0;i<GILPSettings.NUM_RDFTYPE_PARTITIONS;i++)
+							_all_predicates.add(line + i);
+					}
+					else
+						_all_predicates.add(line);
 				}
 				file.close();
 			} catch (Exception e) {

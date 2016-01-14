@@ -99,7 +99,7 @@ public class RDFRuleImpl extends Rule {
 	//normalize this rule by
 	//1. order all atoms by the alphabet order of their predicate names
 	//2. rename the variables in the order of the container predicates
-	//3. remove duplicated predicates
+	//3. remove duplicated atoms
 	public void normalize(){
 		Iterator<Predicate> myIter = this.get_body().getIterator();
 		Predicate[] predicates = new Predicate[this.get_body().getBodyLength()];
