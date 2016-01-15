@@ -407,7 +407,7 @@ public class PGEngine implements QueryEngine {
 		String sql = this.buildSQL(cls);
 		return doQuery(cls, sql);
 	}
-	
+		
 	// get at most @num sub-graphs
 	private RDFSubGraphSet doQuery(Clause cls, String query) {
 		// execute the SPARQL		

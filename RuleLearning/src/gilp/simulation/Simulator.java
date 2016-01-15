@@ -11,7 +11,9 @@ import gilp.rule.Clause;
 import gilp.rule.ClauseSimpleImpl;
 import gilp.rule.RDFRuleImpl;
 import gilp.rule.Rule;
+import gilp.learning.GILPSettings;
 import gilp.learning.RDFBFSLearner;
+import gilp.learning.RuleBaseManager;
 import gilp.learning.RulePackage;
 import gilp.learning.RulePackageFactory;
 import gilp.learning.TripleSelector;
@@ -38,6 +40,33 @@ public class Simulator {
 			}
 		}
 		listCandidates = remained_rules;
+	}
+	
+	ArrayList<RDFRuleImpl> checkConflicts(Rule r){
+		RDFRuleImpl r0 = (RDFRuleImpl) r; 
+		
+		ArrayList<RDFRuleImpl> listConflicts = RuleBaseManager.getConflictRules(r0); 
+		ArrayList<RDFRuleImpl> listRemained = new ArrayList<>();
+		
+		if(listConflicts.size()>0){
+			for (RDFRuleImpl r1: listConflicts){
+				while(RuleBaseManager.isConflict(r0, r1)){
+					if(r1.getLength()>r0.getLength()){
+						r0 = RuleBaseManager.refine(r0, null);
+					}
+					else{
+						r1 = RuleBaseManager.refine(r1, null);
+					}						
+					if (Math.min(r1.getLength(), r0.getLength()) >= GILPSettings.MAXIMUM_RULE_LENGTH)
+						break;
+				}
+				if(RuleBaseManager.isConflict(r0, r1)){
+					listRemained.add(r1);
+				}
+			}
+		}
+		
+		return listRemained;		
 	}
  
 	void simulate(){

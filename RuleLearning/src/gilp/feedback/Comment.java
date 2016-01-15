@@ -31,13 +31,28 @@ public class Comment {
 		this._decision = decision;
 	}
 	
+	@Override
 	public Comment clone(){
 		Comment cmt = new Comment(this._triple.clone(), this._decision);
 		return cmt;
 	}
 	
+	@Override
 	public String toString(){
 		return this._triple.toString() + this._decision;
+	}
+	
+	@Override
+	public boolean equals(Object obj){
+		if (!this.getClass().isInstance(obj)){
+			return false;
+		}
+		
+		Comment cmt = (Comment) obj;
+		if(!this._triple.equals(cmt._triple))
+			return false;
+		
+		return (this.get_decision() == cmt.get_decision());
 	}
 
 }

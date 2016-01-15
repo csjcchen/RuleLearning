@@ -113,7 +113,7 @@ public abstract class Rule {
 		return this.getLength()>=GILPSettings.MAXIMUM_RULE_LENGTH;
 	}
 	
-	private int getLength(){
+	public int getLength(){
 		if (this._head == null){
 			GILPSettings.log(this.getClass().getName() + ": Error! The head of a rule cannot be null.");
 			return 0;
