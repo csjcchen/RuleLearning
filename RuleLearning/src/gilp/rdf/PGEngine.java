@@ -319,7 +319,7 @@ public class PGEngine implements QueryEngine {
 			return false;
 		}
 	
-		//2. get the triples covered by r0 in fb and insert them into table consistent
+		//2. get the triples covered by r0 in fb ( Body(F) left join H(T) ) and insert them into table consistent
 		RDFSubGraphSet sg_set = rp.getSubgraphsCoveredByRule(); 
 		for(RDFSubGraph sg: sg_set.getSubGraphs()){
 			sql = "insert into " + temp_table + " values("; 
@@ -341,7 +341,6 @@ public class PGEngine implements QueryEngine {
 		}	
 		
 		// 3. execute the aggreation SQL 
-		//select aggreage_att, count(distinct Head_Vars) as PHat, count (distinct Head_Var_In_Body) as Cov   group by aggregate_attr  order by PHat desc
 		String aggregate_att = tp.getPredicateName() + "."; 		
 		if (joinedPositionInTP=="S")
 			aggregate_att += "O";
@@ -379,7 +378,7 @@ public class PGEngine implements QueryEngine {
 		sql += " group by " + aggregate_att; 
 		sql += " order by PHat desc, COV" ; 
 		
-		//System.out.println(sql);
+		System.out.println(sql);
 		
 		ArrayList<ArrayList<String>> listTuples = DBController.getTuples(sql);
 		if (listTuples == null)
