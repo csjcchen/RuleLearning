@@ -23,6 +23,8 @@ import gilp.rule.Predicate;
 import gilp.rule.RDFPredicate;
 import gilp.rule.RDFRuleImpl;
 import gilp.rule.Rule;
+import gilp.utility.KVPair;
+import gilp.utility.NumericFeatureTools;
 /*
  * This class is to learn rules from feedback on RDF KB. The learning approach follows 
  * a BFS manner. Currently the implementation is based on AMIE. 
@@ -360,13 +362,36 @@ public class RDFBFSLearner{
 				}
 				
 				if (obj_consts.size()>0){
-					//for each const_object, add P(?s, b)
-					for (String con_str: obj_consts){
-						atom = new RDFPredicate();
-						atom.setPredicateName(t.get_predicate());
-						atom.setSubject("?s");
-						atom.setObject(new String(con_str));						
-						listRlts.add(atom);
+					if(atom.isObjectNumeric()){
+						double[] keys = new double[obj_consts.size()];
+						int i = 0;
+						for(String con_str: obj_consts){
+							keys[i++] = Double.parseDouble(con_str);
+						}
+						
+						double[] bound_points = NumericFeatureTools.calcBoundPoints(keys);
+						for(i=0;i<bound_points.length-1;i++){
+							for (int j=i+1;j<bound_points.length;j++){
+								double low = bound_points[i];
+								double high = bound_points[j];
+								String range = "(" + low + "," + high + ")";
+								atom = new RDFPredicate();
+								atom.setPredicateName(t.get_predicate());
+								atom.setSubject("?s");
+								atom.setObject(range);						
+								listRlts.add(atom);
+							}
+						} 
+					}
+					else{
+						//for each const_object, add P(?s, b)
+						for (String con_str: obj_consts){
+							atom = new RDFPredicate();
+							atom.setPredicateName(t.get_predicate());
+							atom.setSubject("?s");
+							atom.setObject(new String(con_str));						
+							listRlts.add(atom);
+						}
 					}
 				}
 				

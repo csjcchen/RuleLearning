@@ -113,7 +113,7 @@ public class Simulator {
 			
 			candi_rules = RulePackageFactory.chooseTopRP(candi_rules , k);
 			
-			ArrayList<Triple> probing_triples = triple_sel.selectTriples(candi_rules, fb);
+			ArrayList<Triple> probing_triples = triple_sel.selectTriples(candi_rules);
 			Feedback new_fb = fb_gen.getComments(probing_triples);
 			for (Comment cmt: new_fb.get_comments()){
 				if (!fb.get_comments().contains(cmt))

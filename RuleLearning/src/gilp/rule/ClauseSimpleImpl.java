@@ -55,4 +55,21 @@ public class ClauseSimpleImpl implements Clause {
 		return cls;
 	}
 
+	@Override
+	public boolean removePredicate(Predicate p) {
+		Predicate foundItem = null;
+		for (Predicate child: this._predicates){
+			if (child.equals(p)){
+				foundItem = child;
+				break;
+			}
+		}
+		if(foundItem == null)
+			return false;
+		else{
+			this._predicates.remove(foundItem);
+			return true;
+		}
+	}
+
 }

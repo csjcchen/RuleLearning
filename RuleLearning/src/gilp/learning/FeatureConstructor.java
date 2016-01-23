@@ -3,6 +3,7 @@ package gilp.learning;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.PriorityQueue;
@@ -28,6 +29,8 @@ import gilp.rule.RDFPredicate;
 import gilp.rule.RDFRuleImpl;
 import gilp.rule.Rule;
 import gilp.utility.KVPair;
+import gilp.utility.NumericFeatureTools;
+import gilp.utility.NumericalKVPairComparator;
 
 
 /*
@@ -104,7 +107,14 @@ public class FeatureConstructor {
 		qe.getPHatNhats(this._baseRP, tp, listPHats, hmapNHats);
 		//if (tp.getPredicateName().indexOf("type")>=0)
 		//	this.getClass();
- 		
+		
+		ArrayList<String> fresh_vars = this._baseRP.getRule().findFreshArgument(tp);
+		
+		//deal with numerical properties
+		if (tp.getObject().equals(fresh_vars.get(0)) && tp.isObjectNumeric()){
+			generateHistograms(listPHats, hmapNHats);
+		}
+		
 		for (KVPair<String, Integer> kv: listPHats){
 			String a = kv.get_key();
 			double p_hat = (double)kv.get_value();
@@ -117,7 +127,7 @@ public class FeatureConstructor {
 			if (h>tau){
 				//construct a new tp by replacing the fresh variable in @tp with a 
 							
- 				ArrayList<String> fresh_vars = this._baseRP.getRule().findFreshArgument(tp);
+ 				
  				RDFPredicate new_tp = tp.clone();
  				if (tp.getSubject().equals(fresh_vars.get(0)))
  					new_tp.setSubject(a); 				
@@ -133,7 +143,76 @@ public class FeatureConstructor {
 		} 
 		return tau;
 	}	
-	 
+	
+	//input table
+	/*
+	  constant | phat | cov 
+	  3        | 1    | 1
+	  5        | 0    | 1
+	  7        | 2    | 2
+	  100000   | 0    | 2
+	 create four boundary points  Double.min,  4 = (3+5)/2,  6=(5+7)/2, Double.Max
+	 then aggregation
+	 output table
+	 range  | phat | cov
+	 [Double.min, 4] | 1 | 1
+	 [Double.min, 6] | 1 | 2
+	 [Double.min, Double.max] |  3 |  6
+	 [4, 6]   | 0  | 1
+	 .......
+	 update @listPHats and @hmapNHats, the elements in @listPHats are still ordered by phat desc  
+	 */
+	private void generateHistograms(ArrayList<KVPair<String, Integer>> listPHats,HashMap<String, Integer> hmapNHats ){
+		//1. parse the constants as doubles and create the boundary points 
+		//TODO current implementation does not deal with dates		
+		double[] keys = new double[listPHats.size()];
+		if (keys.length>0)
+			this.getClass();
+		int i = 0;
+		for (KVPair<String, Integer> kv: listPHats){
+			keys[i++] = Double.parseDouble(kv.get_key());
+		}
+		
+		double[] bound_points = NumericFeatureTools.calcBoundPoints(keys);
+
+		
+		//2. cache the old
+		ArrayList<KVPair<String, Integer>> back_PHats = new ArrayList<>();
+		HashMap<String, Integer> back_NHats = new HashMap<>();
+		
+		back_PHats.addAll(listPHats);
+		back_NHats.putAll(hmapNHats);
+		
+		listPHats.clear();
+		hmapNHats.clear();
+		//3. compute the histogrammed phats and nhats
+		
+		for(i=0;i<bound_points.length-1;i++){
+			for (int j=i+1;j<bound_points.length;j++){
+				double low = bound_points[i];
+				double high = bound_points[j];
+				String range = "(" + low + "," + high + ")";
+				int phat = 0;
+				int nhat = 0;
+				for (int k=0;k<keys.length;k++){
+					if (keys[k]>low && keys[k]<high){
+						phat += back_PHats.get(k).get_value();
+						nhat += back_NHats.get(back_PHats.get(k).get_key());
+					}
+				}
+				listPHats.add(new KVPair<String,Integer>(range, phat));
+				hmapNHats.put(range, nhat);
+			}
+		} 
+		KVPair<String, Integer>[] temp_phats = new KVPair[listPHats.size()]; 
+		listPHats.toArray(temp_phats);
+		
+		Arrays.sort(temp_phats, new NumericalKVPairComparator());
+		listPHats.clear();
+		for (i=temp_phats.length-1;i>=0;i--){
+			listPHats.add(temp_phats[i]);
+		}
+	}
 	
 	//calculate and return the k^th highest quality score and remove all candidates with scores lower than the computed threshold
 	private double updateCandidates(PriorityQueue<ExpRulePackage> candidates){

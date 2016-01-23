@@ -322,7 +322,7 @@ public class RulePackage {
 			}
 			
 			Triple t = no_prefix_head.bind(head_vars, list_binding);  
-			if (consistent_triples.contains(t)){
+			if (consistent_triples.contains(t)){				
 				if (r.isInclusive())
 					sg.addTriple(t.mapToCorrectTriple());
 				else if (r.isExclusive())

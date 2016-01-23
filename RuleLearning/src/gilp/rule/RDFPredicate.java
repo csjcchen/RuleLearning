@@ -5,6 +5,7 @@ import java.util.Iterator;
 import gilp.learning.GILPSettings;
 import gilp.rdf.JoinType;
 import gilp.rdf.Triple;
+import gilp.utility.NumericFeatureTools;
 
 import java.util.ArrayList;
 
@@ -87,9 +88,19 @@ public class RDFPredicate extends Predicate{
 		return isVariable(this._predicate_name);
 	}
 	
+	public boolean isObjectNumeric(){
+		for (String strPred : GILPSettings.NUMERICAL_PREDICATES){
+			if (this.getPredicateName().equalsIgnoreCase(strPred)){
+				return true;
+			}
+		}
+		return false;
+	}
+	
 	boolean isVariable(String val){
 		return val.toString().startsWith("?");
 	}
+	
 	
 	@Override
 	public RDFPredicate clone(){
@@ -169,15 +180,30 @@ public class RDFPredicate extends Predicate{
 		return true;
 	}
 	
+	
+	
+	public double[] getObjBounds(){
+		return NumericFeatureTools.getBounds(this._object);
+	}
+	
+	
 	public boolean match(Triple tr){
 		if (!this.getPredicateName().equals(tr.get_predicate()))
 			return false;
 		if (!this.isSubjectVariable() && !this.getSubject().equals(tr.get_subject())){
 			return false;
 		}		
-		if (!this.isObjectVariable() && !this.getObject().equals(tr.get_obj())){
-			return false;
-		}		
+		
+		if (!this.isObjectVariable()){
+			if (this.isObjectNumeric()){
+				if (NumericFeatureTools.compareRange(this.getObject(), tr.get_obj())<= 0 )
+					return false;
+			}
+			else{
+				if (!this.getObject().equals(tr.get_obj()))
+					return false;
+			}
+		} 
 		return true;
 	} 
 	
@@ -224,5 +250,90 @@ public class RDFPredicate extends Predicate{
 		}
 		return t;
 	}
+	
+	//return 1: this is more general than tp
+	//-1: tp is more general than this
+	//0: no one is more general than the other
+	public int compareGeneralization(RDFPredicate tp){
+		//current implementation only considers numerical predicates like hasLength
+		if (!this.getSubject().equals(tp.getSubject()))
+			return 0;
+		
+		if (!this.isObjectNumeric())
+			return 0;
+		
+		if (this.isObjectVariable() && tp.isObjectVariable())
+			return 0; // R(?s, ?o1) == R(?s, ?o2)
+		
+		if(this.isObjectVariable() && !tp.isObjectVariable())
+			return 1;// R(?s, ?o) > R(?s, "[2,3]") 
+		
+		if (!this.isObjectVariable() && tp.isObjectVariable())
+			return -1; //R(?s, "[2,3]") < R(?s, ?o)  
+		
+		if (!this.isObjectVariable() && !tp.isObjectVariable()){
+			return NumericFeatureTools.compareRange(this._object, tp._object);			
+		}
+		
+		return 0;
+	}
+	
+	//###############################################################################
 
+	//                   unit  tests
+		
+	//###############################################################################
+
+	static void testMatchNumeric(){
+		RDFPredicate tp = new RDFPredicate();
+		tp = new RDFPredicate();
+		tp.setSubject(new String("?s"));
+		tp.setPredicateName("hasWeight");
+		tp.setObject(new String("[1,200)"));		
+	
+		Triple tr = new Triple();
+		tr.set_subject("Yao_Ming");
+		tr.set_predicate("hasWeight");
+		tr.set_obj("199.88");
+		
+		System.out.println(tr + " matches "  + tp + ": " + tp.match(tr));
+		tr.set_obj("-90");
+		System.out.println(tr + " matches "  + tp + ": " + tp.match(tr));
+		tr.set_obj("900");
+		System.out.println(tr + " matches "  + tp + ": " + tp.match(tr));
+		tr.set_obj("1");
+		System.out.println(tr + " matches "  + tp + ": " + tp.match(tr));			
+	}
+	
+	static void testCompareGeneralization(){
+		RDFPredicate tp1 = new RDFPredicate();
+		tp1 = new RDFPredicate();
+		tp1.setSubject(new String("?s"));
+		tp1.setPredicateName("hasWeight");
+		tp1.setObject(new String("[1,200)"));
+		
+		RDFPredicate tp2 = new RDFPredicate();
+		tp2 = new RDFPredicate();
+		tp2.setSubject(new String("?s"));
+		tp2.setPredicateName("hasWeight");
+		tp2.setObject(new String("[1,200)"));
+		
+		System.out.println(tp1 + " vs. " + tp2 + ":" + tp1.compareGeneralization(tp2));
+		tp2.setObject(new String("[2,200)"));
+		System.out.println(tp1 + " vs. " + tp2 + ":" + tp1.compareGeneralization(tp2));
+		tp2.setObject(new String("(1,200)"));
+		System.out.println(tp1 + " vs. " + tp2 + ":" + tp1.compareGeneralization(tp2));
+		tp2.setObject(new String("[3,20]"));
+		System.out.println(tp1 + " vs. " + tp2 + ":" + tp1.compareGeneralization(tp2));
+		tp2.setObject(new String("[-1,200)"));
+		System.out.println(tp1 + " vs. " + tp2 + ":" + tp1.compareGeneralization(tp2));
+		tp2.setObject(new String("[1,200]"));
+		System.out.println(tp1 + " vs. " + tp2 + ":" + tp1.compareGeneralization(tp2));
+		tp2.setObject(new String("[2,201)"));
+		System.out.println(tp1 + " vs. " + tp2 + ":" + tp1.compareGeneralization(tp2));
+	}
+
+	public static void main(String[] args){
+		testCompareGeneralization();
+	}
 }

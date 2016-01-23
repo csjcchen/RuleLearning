@@ -72,9 +72,8 @@ public class PGEngine implements QueryEngine {
 	//TODO: currently we do not support queries where variables appear in predicates
 	//TODO: we also do not consider self-join 
 	private String buildSQL(Clause cls){
-		StringBuffer sb_head = new StringBuffer(); 
-		sb_head.append("select * ");
 		
+		StringBuffer sb_sel = new StringBuffer("select ");
 		StringBuffer sb_from = new StringBuffer(" from ");
 		StringBuffer sb_where = new StringBuffer(" where ");
 		
@@ -83,10 +82,12 @@ public class PGEngine implements QueryEngine {
 		HashMap<String,ArrayList<JoinedPredicate>> hmapJoins = new HashMap<String,ArrayList<JoinedPredicate>>();
 				
 		Iterator<Predicate> tpIterator = cls.getIterator();
+		boolean hasWhereClause = false;
 		while(tpIterator.hasNext()){
 			RDFPredicate tp = (RDFPredicate)tpIterator.next();
 			
 			String prop_name = tp.getPredicateName();
+			
 			if(!hmap_preds.containsKey(tp.getPredicateName())){
 				hmap_preds.put(prop_name, 1);
 				prop_name += "_1";
@@ -103,7 +104,7 @@ public class PGEngine implements QueryEngine {
 			//if (!listPredicates.contains(tp.getPredicateName())){
 			//	listPredicates.add(tp.getPredicateName());
 			//}
-			
+			sb_sel.append(prop_name +  ".tid, " + prop_name + ".S, ");
 			if (tp.isSubjectVariable()){
 				ArrayList<JoinedPredicate> joinedPredicates = hmapJoins.get(tp.getSubject());
 				if (joinedPredicates == null){
@@ -116,6 +117,7 @@ public class PGEngine implements QueryEngine {
 				//s is a constant
 				sb_where.append(prop_name + ".s='" + tp.getSubject()+"'");
 				sb_where.append(" and ");
+				hasWhereClause = true;
 			}
 			
 			if (tp.isObjectVariable()){
@@ -125,10 +127,23 @@ public class PGEngine implements QueryEngine {
 					hmapJoins.put(tp.getObject(), joinedPredicates);
 				}
 				joinedPredicates.add(new JoinedPredicate(prop_name,"o"));
+				if (tp.isObjectNumeric())
+					sb_sel.append(prop_name + ".NUM_O, ");
+				else
+					sb_sel.append(prop_name + ".O, ");
 			}			
 			else{
 				//o is a constant
-				sb_where.append(prop_name + ".o='" + tp.getObject()+"'");
+				hasWhereClause = true;
+				if (tp.isObjectNumeric()){
+					double[] bounds = tp.getObjBounds();
+					sb_where.append(prop_name + ".num_o between " + bounds[0] + " and " + bounds[1] + " "); 
+					sb_sel.append(prop_name + ".NUM_O, ");
+				}
+				else{
+					sb_where.append(prop_name + ".o='" + tp.getObject()+"'");
+					sb_sel.append(prop_name + ".O, ");
+				}
 				sb_where.append(" and ");
 			}
 		}
@@ -149,16 +164,19 @@ public class PGEngine implements QueryEngine {
 			}
 		}
 		
+		String sel = sb_sel.toString();
+		sel = sel.substring(0, sel.lastIndexOf(","));
+		
 		String from = sb_from.toString();
-		from = from.substring(0, from.lastIndexOf(",")-1);
+		from = from.substring(0, from.lastIndexOf(","));
 		String where = sb_where.toString();
 		if (where.indexOf("and")>=0)
-			where = where.substring(0, where.lastIndexOf("and")-1);
+			where = where.substring(0, where.lastIndexOf("and"));
 
-		if (where.indexOf("=")<0)
+		if (!hasWhereClause)
 			where = "";
-		
-		return sb_head.toString() + from + where;
+	
+ 		return sel + from + where;
 	}
 	
 	 
@@ -378,7 +396,7 @@ public class PGEngine implements QueryEngine {
 		sql += " group by " + aggregate_att; 
 		sql += " order by PHat desc, COV" ; 
 		
-		System.out.println(sql);
+		//System.out.println(sql);
 		
 		ArrayList<ArrayList<String>> listTuples = DBController.getTuples(sql);
 		if (listTuples == null)

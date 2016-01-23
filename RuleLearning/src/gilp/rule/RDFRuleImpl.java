@@ -95,12 +95,47 @@ public class RDFRuleImpl extends Rule {
 	 
 		return sb.toString();
 	}
+	
+	//if tp1 is more general than tp2, we then remove tp1 from this rule
+	//current implementation only considers numerical properties
+	public void removeSubsumedPredicates(){
+		Iterator<Predicate> iterPred = this._body.getIterator();
+		Iterator<Predicate> iterPred2 = this._body.getIterator();	
+		ArrayList<Predicate> listPredicates = new ArrayList<>();
+		
+		while(iterPred.hasNext()){
+			listPredicates.add(iterPred.next());
+		}
+		
+		ArrayList<Predicate> subsumedPredicates = new ArrayList<>();
+		for (int i=0;i<listPredicates.size();i++){
+			RDFPredicate tp1 =(RDFPredicate) listPredicates.get(i);
+			for (int j=i+1;j<listPredicates.size();j++){
+				RDFPredicate tp2 =(RDFPredicate) listPredicates.get(j);
+				int rel = tp1.compareGeneralization(tp2);
+				if (rel >0 ){
+					if (!subsumedPredicates.contains(tp1))
+						subsumedPredicates.add(tp1);
+				}
+				else if(rel<0){
+					if (!subsumedPredicates.contains(tp2))
+						subsumedPredicates.add(tp2);
+				}
+			}
+		}
+		
+		for (Predicate p: subsumedPredicates){
+			this._body.removePredicate(p);
+		}
+	}
 	 
 	//normalize this rule by
 	//1. order all atoms by the alphabet order of their predicate names
 	//2. rename the variables in the order of the container predicates
 	//3. remove duplicated atoms
 	public void normalize(){
+		//this.removeSubsumedPredicates();
+		
 		Iterator<Predicate> myIter = this.get_body().getIterator();
 		Predicate[] predicates = new Predicate[this.get_body().getBodyLength()];
 		int i = 0;
@@ -277,6 +312,25 @@ public class RDFRuleImpl extends Rule {
 	
 	//****************************************************************************
 
+	static void testRemoveSubsumed(){
+		RDFRuleImpl r = new RDFRuleImpl();
+		
+		RDFPredicate h = new RDFPredicate("?s1","hasGivenName", "?o1");
+		h = h.mapToCorrectPred();
+		r.set_head(h);
+		
+		RDFPredicate p = new RDFPredicate("?s2","hasLength", "?o1");
+		r.get_body().addPredicate(p);
+		p = new RDFPredicate("?s1","hasLength", "[1,4]");
+		r.get_body().addPredicate(p);
+		p = new RDFPredicate("?s1","hasNationality", "(0,10)");
+		r.get_body().addPredicate(p);
+		
+		System.out.println(r);
+		System.out.println("after removing subsumed predicates:");
+		r.removeSubsumedPredicates();
+		System.out.println(r);
+	}
 
 	
 	
@@ -319,7 +373,7 @@ public class RDFRuleImpl extends Rule {
 	}
 	
 	public static void main(String[] args){
-		testBasic();
+		testRemoveSubsumed();
 	}
  
 }

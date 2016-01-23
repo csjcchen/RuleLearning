@@ -16,7 +16,7 @@ import gilp.rule.*;
  * */
 public class TripleSelector {
 	
-	public ArrayList<Triple> selectTriples(ArrayList<RulePackage> listRules, Feedback fb){
+	public ArrayList<Triple> selectTriples(ArrayList<RulePackage> listRules){
 		//TODO we need some limitations on the number of total triples we want to probe
 		ArrayList<Triple> listRlts = new ArrayList<Triple>();
 		for (RulePackage rp: listRules){

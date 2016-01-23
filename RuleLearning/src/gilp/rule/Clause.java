@@ -7,6 +7,8 @@ public interface Clause {
 	
 	public void addPredicate(Predicate p);
 	
+	public boolean removePredicate(Predicate p);
+	
 	public Iterator<Predicate> getIterator();
 	 
 	public int getBodyLength();

@@ -232,8 +232,51 @@ public class SimpleCNFQueryEngine implements QueryEngine {
 		else
 			return sg_set;
 	} 
+	//###############################################################################
+
+	//                   unit  tests
+			
+	//###############################################################################
 	
-	public static void main(String[] args){
+	static void testNumeric(){
+		ArrayList<Triple> dataset = new ArrayList<Triple>();
+		Triple t = new Triple("China","hasArea","900");
+		dataset.add(t);
+		t = new Triple("USA","hasArea","-10");
+		dataset.add(t);
+		t = new Triple("China","hasGDP","100000");
+		dataset.add(t);
+		t = new Triple("USA","hasGDP","200000");
+		dataset.add(t);
+		
+		Clause cls = new ClauseSimpleImpl();
+		RDFPredicate tp = new RDFPredicate();
+		tp.setSubject(new String("?s1"));
+		tp.setPredicateName("hasArea");
+		tp.setObject(new String("(-90,10000)"));
+		cls.addPredicate(tp);
+		
+		tp = new RDFPredicate();
+		tp.setSubject(new String("?s1"));
+		tp.setPredicateName("hasGDP");
+		tp.setObject(new String("?o1"));
+		cls.addPredicate(tp);
+		
+		
+		SimpleCNFQueryEngine sqe = new SimpleCNFQueryEngine();
+		sqe.setDataSet(dataset);
+		
+		RDFSubGraphSet rlt = sqe.getTriplesByCNF(cls);
+		if (rlt != null) {
+			for (RDFSubGraph twig : rlt.getSubGraphs()) {
+				System.out.println(twig.toString());
+			}
+		} else {
+			System.out.println("Empty results set.");
+		}
+	}
+	
+	static void basicTest(){
 		ArrayList<Triple> dataset = new ArrayList<Triple>();
 		Triple t = new Triple("Yao_Ming","hasGivenName","Yao");
 		dataset.add(t);
@@ -287,6 +330,10 @@ public class SimpleCNFQueryEngine implements QueryEngine {
 		ArrayList<String> vars = new ArrayList<>();
 		vars.add("?o1");
 		vars.add("?s1");	
+	}
+	
+	public static void main(String[] args){
+		testNumeric();
 	}
 
 }

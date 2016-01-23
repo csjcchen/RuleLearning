@@ -70,10 +70,19 @@ public class GILPSettings {
 	public static String DB_USER;
 	public static String DB_DHPASS;
 	
+	public static String[] NUMERICAL_PREDICATES = { "hasArea", "hasBudget", "hasDuration", "hasEconomicGrowth", 
+			"hasExpenses", "hasExport", "hasGDP", "hasGini", "hasHeight", "hasImport", "hasInflation", "hasLatitude", 
+			"hasLength", "hasLongitude", "hasNumberOfPeople", "hasPages", "hasPopulationDensity","hasPoverty", 
+			"hasRevenue", "hasUnemployment", "hasWeight", 
+		};
+	//TODO current implementation does not deal with dates 
+	//"diedOnDate", "happenedOnDate", "startedOnDate","wasBornOnDate", "wasCreatedOnDate", "wasDestroyedOnDate"
+	
 	static ArrayList<String> _all_predicates = null;
 		//store all predicates' names
 	static HashMap<String, Double> _yago_stat = null;
 		//store the statistics about yago3: the probability that triples in each predicate are correct
+	
 	
 	static private PrintWriter log;
 	 
