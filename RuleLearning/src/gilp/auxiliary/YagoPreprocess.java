@@ -416,7 +416,62 @@ public class YagoPreprocess {
 		} 
 	}
 	
+	static boolean isTupleExists(String s, String o, String tab){
+		String qry = "select count(*) from " + tab; 
+		qry += " where s='" + s + "' and o='" + o + "'"; 
+		String rlt = DBController.getSingleValue(qry);
+		int num = Integer.parseInt(rlt);
+		return num>0;
+	}
+	
+	static void addChinesePeople(){
+		//wikicat_Chinese_people
+		//if rdftype(x, P) then rdftype(x, wikicat_Chinese_people)
+		//P can be wikicat_Chinese_Actors ... the list is in chinese_types.txt
+		
+		String CHINESE = "wikicat_Chinese_people"; 
+		
+		RandomAccessFile file, out_sql;
+		HashMap<String, String> hmapTypes = new HashMap<String, String>();
+		try{
+			file = new RandomAccessFile("chinese_types.txt","r");
+			out_sql = new RandomAccessFile("/home/jchen/gilp/chinese_info.sql","rw");
+			String line = "";
+			while ((line = file.readLine()) != null) {
+				hmapTypes.put(line.trim().toLowerCase(), "");
+			}
+			file.close();
+
+			for (int i = 0; i < GILPSettings.NUM_RDFTYPE_PARTITIONS; i++) {
+				String tab = "rdftype" + i;
+				String qry = "select s,o from " + tab;
+				qry += " where o like '%Chinese%' order by s";
+
+				ArrayList<ArrayList<String>> rlts = DBController.getTuples(qry);
+				for (ArrayList<String> tuple : rlts) {
+					String s = tuple.get(0);
+					String o = tuple.get(1);
+					if (hmapTypes.containsKey(o.trim().toLowerCase())) {
+						if (!isTupleExists(s, CHINESE, tab)) {
+							String insrtSql = "insert into " + tab + "(s,o)";
+							insrtSql += " values('" + s + "','" + CHINESE + "')";
+							//out_sql.writeBytes(insrtSql + "\n");
+							DBController.exec_update(insrtSql);
+						}
+					}
+				}
+				System.out.println("finish " + tab );
+			}
+			
+			out_sql.close();
+		}
+		catch(Exception ex){
+			ex.printStackTrace(System.out);
+		}
+		
+	}
+	
 	public static void main(String[] args){
-		completeSelectivities();
+		addChinesePeople();
 	}
 }

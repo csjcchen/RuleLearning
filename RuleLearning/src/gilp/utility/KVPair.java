@@ -22,5 +22,4 @@ public class KVPair<K, V> {
 	public void set_value(V value) {
 		this._value = value;
 	}
-
 }

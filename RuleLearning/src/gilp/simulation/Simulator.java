@@ -73,7 +73,9 @@ public class Simulator {
 		int num_comments = 5; //number of initial comments 
 		int k = 1;//top-k best rules
 		
-		FeedbackGenerator fb_gen = new FeedbackGenerator(); 
+		//FeedbackGenerator fb_gen = new FeedbackGenerator(); 
+		FBGeneratorFromFacts fb_gen = new FBGeneratorFromFacts();
+		
 		TripleSelector triple_sel = new TripleSelector();
 		
 		Feedback fb = fb_gen.getRandomComments(num_comments);

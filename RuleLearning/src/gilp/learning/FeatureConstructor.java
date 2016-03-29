@@ -28,6 +28,7 @@ import gilp.rule.Predicate;
 import gilp.rule.RDFPredicate;
 import gilp.rule.RDFRuleImpl;
 import gilp.rule.Rule;
+import gilp.utility.KVComparatorWRTValue;
 import gilp.utility.KVPair;
 import gilp.utility.NumericFeatureTools;
 import gilp.utility.NumericalKVPairComparator;
@@ -97,14 +98,76 @@ public class FeatureConstructor {
 		return listRlts;
 	}
 	
+	
+	private ArrayList<KVPair<String, Integer>> combinePHats(ArrayList<KVPair<String, Integer>> rltPHats, 
+			ArrayList<KVPair<String, Integer>> tempPHats){
+		
+		for (KVPair<String, Integer> newkv : tempPHats){
+			boolean exists = false;
+			for (KVPair<String, Integer> oldkv: rltPHats){
+				if (newkv.get_key().equalsIgnoreCase(oldkv.get_key())){
+					int count = oldkv.get_value();
+					count += newkv.get_value();
+					oldkv.set_value(count);
+					exists = true;
+					break;
+				}
+			} 
+			if(!exists){
+				rltPHats.add(new KVPair<String, Integer>(newkv.get_key(), newkv.get_value()));
+			}
+		}
+		
+		//re-sort the list
+		KVPair<String, Integer>[] temp_array = rltPHats.toArray(new KVPair[0]);
+		Arrays.sort(temp_array, new KVComparatorWRTValue());
+		rltPHats.clear();
+		for (int i=temp_array.length-1;i>=0;i--)
+			rltPHats.add(temp_array[i]);
+		return rltPHats;
+	}
+	
+	private HashMap<String, Integer> combineNHats(HashMap<String, Integer> rltNHats,
+			HashMap<String, Integer> tempNHats){
+		
+		for (String newkey: tempNHats.keySet()){
+			if(rltNHats.containsKey(newkey)){
+				int count = rltNHats.get(newkey);
+				int more_count = tempNHats.get(newkey);
+				count +=  more_count;
+				rltNHats.put(newkey, new Integer(count));
+			}
+			else{
+				rltNHats.put(newkey, tempNHats.get(newkey));
+			}
+		}
+		return rltNHats;
+	}
+	
+	
 	//returned value is the new tau
 	//the @candidates will be also updated. 
 	double expand(RDFPredicate tp, PriorityQueue<ExpRulePackage> candidates, double tau){
 		PGEngine qe = new PGEngine(); 
 		ArrayList<KVPair<String, Integer>> listPHats = new ArrayList<>(); 
 		HashMap<String, Integer> hmapNHats = new HashMap<>();
-		 	
-		qe.getPHatNhats(this._baseRP, tp, listPHats, hmapNHats);
+		
+		if (tp.getPredicateName().equalsIgnoreCase("rdftype")){
+			//rdfType has multiple partitioned sub-tables
+			for (int i=0;i<GILPSettings.NUM_RDFTYPE_PARTITIONS;i++){
+				ArrayList<KVPair<String, Integer>> tempPHats = new ArrayList<>(); 
+				HashMap<String, Integer> tempNHats = new HashMap<>();
+				tp.setPredicateName("rdftype" + i);
+				qe.getPHatNhats(this._baseRP, tp, tempPHats, tempNHats);
+				if (tempPHats.size()>0 || !tempNHats.isEmpty()){
+					listPHats = combinePHats(listPHats, tempPHats);
+					hmapNHats = combineNHats(hmapNHats, tempNHats);
+				}				
+			}
+			tp.setPredicateName("rdftype");
+		}
+		else
+			qe.getPHatNhats(this._baseRP, tp, listPHats, hmapNHats);
 		//if (tp.getPredicateName().indexOf("type")>=0)
 		//	this.getClass();
 		

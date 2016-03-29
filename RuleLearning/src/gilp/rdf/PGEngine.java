@@ -360,8 +360,12 @@ public class PGEngine implements QueryEngine {
 		
 		// 3. execute the aggreation SQL 
 		String aggregate_att = tp.getPredicateName() + "."; 		
-		if (joinedPositionInTP=="S")
-			aggregate_att += "O";
+		if (joinedPositionInTP=="S"){
+			if (tp.isObjectNumeric())
+				aggregate_att += "num_o";
+			else
+				aggregate_att += "O";
+		}
 		else
 			aggregate_att += "S"; 
 		
@@ -413,10 +417,68 @@ public class PGEngine implements QueryEngine {
 		return true;
 	}
 	
+	boolean containRDFType(Clause cls){
+		Iterator<Predicate> iter = cls.getIterator();
+		while(iter.hasNext()){
+			if(iter.next().getPredicateName().equalsIgnoreCase("rdftype")){
+				return true;
+			}
+		}
+		return false;
+	}
+	
+	Clause replaceRDFType(Clause cls, String newPred){
+		Clause newCls = cls.clone();
+		Iterator<Predicate> iter = newCls.getIterator();
+		while(iter.hasNext()){
+			Predicate p = iter.next();
+			if(p.getPredicateName().equalsIgnoreCase("rdftype")){
+				p.setPredicateName(newPred);
+			}
+		}
+		return newCls;
+	}
+	
 	public RDFSubGraphSet getTriplesByCNF(Clause cls, int num){
-		String sql = this.buildSQL(cls);
-		sql += "  limit " + num; 
-		return doQuery(cls, sql);
+		if(containRDFType(cls)){
+			RDFSubGraphSet rltSet = new RDFSubGraphSet();
+			for(int i=0;i<GILPSettings.NUM_RDFTYPE_PARTITIONS;i++){
+				String newPred = "rdftype" + i; 
+				Clause convertedCls = replaceRDFType(cls, newPred);
+				String sql = this.buildSQL(convertedCls);
+				sql += "  limit " + num; 
+				RDFSubGraphSet oneSet = doQuery(cls, sql);
+				if (i==0)
+					rltSet.setPredicates(oneSet.getPredicates());
+				for (RDFSubGraph sg: oneSet.getSubGraphs())
+					rltSet.addSubGraph(sg);
+			}
+			//do sampling
+			if(rltSet.getSubGraphs().size()>num){
+				int s = rltSet.getSubGraphs().size();
+				int[] isChosen = new int[s];
+				for (int i = 0; i < s; i++) {
+					isChosen[i] = 0;
+				}
+				ArrayList<RDFSubGraph> listChosenSGs = new ArrayList<>();
+				while (listChosenSGs.size() < Math.min(num, s)) {
+					int idx = (int) Math.round(Math.random() * (s - 1));
+					if (isChosen[idx] == 0) {
+						RDFSubGraph sg = rltSet.getSubGraphs().get(idx);
+						isChosen[idx] = 1;
+						listChosenSGs.add(sg);
+					}
+				}
+				rltSet.getSubGraphs().clear();
+				rltSet.getSubGraphs().addAll(listChosenSGs);
+			}
+			return rltSet;
+		}
+		else{		
+			String sql = this.buildSQL(cls);
+			sql += "  limit " + num; 
+			return doQuery(cls, sql);
+		}
 	}
 
 	@Override
@@ -505,8 +567,8 @@ public class PGEngine implements QueryEngine {
 	 
 		tp = new RDFPredicate();
 		tp.setSubject(new String("?s"));
-		tp.setPredicateName("wasBornIn");
-		tp.setObject(new String("Shanghai"));		
+		tp.setPredicateName("rdftype");
+		tp.setObject(new String("wikicat_Chinese_people"));		
 		cls.addPredicate(tp);
 		
 		PGEngine pg = new PGEngine();
@@ -516,7 +578,7 @@ public class PGEngine implements QueryEngine {
 		System.out.println("#######################################################");
 		try {
 			System.out.println("query is:" + cls.toString());
-			RDFSubGraphSet rlt = pg.getTriplesByCNF(cls);
+			RDFSubGraphSet rlt = pg.getTriplesByCNF(cls,10);
 			System.out.println("results:");
 			if (rlt!=null){
 				for (RDFSubGraph twig: rlt.getSubGraphs()){

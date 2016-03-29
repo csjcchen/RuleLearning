@@ -65,18 +65,18 @@ public class FeedbackBaseManager {
 	
 	public static Feedback loadAllFeedbacks(){
 	
-		String query = "select S, P, O, decision from " + TABLE;
+		String query = "select S, P, O, cmt from " + TABLE;
 		return doQuery(query);
 	}
 	
 	public static Feedback loadPositiveFeedbacks(){
-		String query = "select S, P, O, decision from " + TABLE;
+		String query = "select S, P, O, cmt from " + TABLE;
 		query += " where decision>0";
 		return doQuery(query);
 	}
 	
 	public static Feedback loadNegativeFeedbacks(){
-		String query = "select S, P, O, decision from " + TABLE;
+		String query = "select S, P, O, cmt from " + TABLE;
 		query +=  " where decision<0";
 		return doQuery(query);
 	}
@@ -130,6 +130,39 @@ public class FeedbackBaseManager {
 		Feedback fb = new Feedback();
 		fb.set_comments(listComments);
 		return fb;
+	}
+	static boolean exists(Comment cmt){
+		String query = "select S, P, O, cmt from " + TABLE;
+		query += " where S='" + cmt.get_triple().get_subject() + "'";
+		query += " and P='" + cmt.get_triple().get_predicate() + "'";
+		query += " and O='" + cmt.get_triple().get_obj() + "'";
+		
+		Feedback fb = doQuery(query);
+		if (fb == null)
+			return false;
+		else if (fb.get_comments().isEmpty()){
+			return false;
+		}
+		else
+			return true;
+	}
+	public static boolean insertFeedback(Comment cmt){
+		if (exists(cmt))
+			return true;
+		else{
+			String qry = "insert into " + TABLE + "(s, p, o, cmt)";
+			qry += " values('" + cmt.get_triple().get_subject() + "'";
+			qry += ",'" + cmt.get_triple().get_predicate() + "'";
+			qry += ",'" + cmt.get_triple().get_obj() + "'";
+			if (cmt._decision == true)
+				qry += ",1)";
+			else
+				qry += ",-1)";
+			if(DBController.exec_update(qry))
+				return true;
+			else
+				return false;
+		}
 	}
 
 }
