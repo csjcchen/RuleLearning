@@ -14,7 +14,9 @@ public class RDFPredicate extends Predicate{
 	String _predicate_name = null;
 	String _subject = null;
 	String _object = null; 	
-	 
+	
+	
+	
 	public RDFPredicate(){}
 	
 	public RDFPredicate(String s, String p, String o){
@@ -86,6 +88,43 @@ public class RDFPredicate extends Predicate{
 	
 	public boolean isPredicateVariable(){
 		return isVariable(this._predicate_name);
+	}
+	
+	public boolean isPredicateComparator(){
+		for (String pred: RDFPredicate._comparators){
+			if(pred.equals(this._predicate_name))
+				return true;
+		}
+		return false;
+	}
+	
+	public static String[] _comparators = {"lessThan", "largerThan", "equalTo", "notEqualTo"};
+	
+	public static boolean satisfyComparison(String comparator, String s, String o){
+		if (comparator.equals(_comparators[0])){
+			//lessThan
+			double d1 = Double.parseDouble(s);
+			double d2 = Double.parseDouble(o);
+			return d1<d2;
+		}
+		else if(comparator.equals(_comparators[1])){
+			//largerThan
+			double d1 = Double.parseDouble(s);
+			double d2 = Double.parseDouble(o);
+			return d1>d2;
+		}
+		else if(comparator.equals(_comparators[2])){
+			//equanlTo
+			return s.equals(o);			
+		}
+		else if(comparator.equals(_comparators[3])){
+			//notEqualTo
+			return !s.equals(o);
+		}
+		else{
+			System.out.println("Error! RDFPredicate.satisfyComparison: the input predicate '" + comparator + "' is undefined."  );
+			return false;
+		}
 	}
 	
 	public boolean isObjectNumeric(){

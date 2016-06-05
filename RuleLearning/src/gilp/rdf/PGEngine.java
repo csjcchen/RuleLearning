@@ -369,48 +369,64 @@ public class PGEngine implements QueryEngine {
 		else
 			aggregate_att += "S"; 
 		
-		sql = "select " + aggregate_att; 
-		sql += ", count( distinct "; 
+		String str_sel = "select count( distinct "; 
 		RDFPredicate head = (RDFPredicate)r0.get_head();
 		if (head.isSubjectVariable())
-			sql += head.getPredicateName() + "_S";
+			str_sel += head.getPredicateName() + "_S";
 		if (head.isObjectVariable())
-			sql += " || '-' || " + head.getPredicateName() + "_O"; 
+			str_sel += " || '-' || " + head.getPredicateName() + "_O"; 
 		
-		sql += ") as PHat, count( distinct ";  
+		str_sel += ") as PHat, count( distinct ";  
 		
 		for (int i=0;i<head_vars.size();i++){
 			String v = head_vars.get(i);
 			if (i>0)
-				sql += " || '-' || "; 
+				str_sel += " || '-' || "; 
 			String attr = hmap_headvar_attr.get(v);
-			sql += attr; 
+			str_sel += attr; 
 		}
-		sql += ") as COV ";
-			
-		sql += " from " + temp_table +" , " + tp.getPredicateName();
-		sql += " where " + temp_table + "." + joinedPropInRule + "=" + tp.getPredicateName() + "." + joinedPositionInTP;
+		str_sel += ") as COV ";
+		
+		String str_from = " from " + temp_table +" , " + tp.getPredicateName();
+		String str_where = " where " + temp_table + "." + joinedPropInRule + "=" + tp.getPredicateName() + "." + joinedPositionInTP;
 		
 		if (joinedPositionInTP=="S" && !tp.isSubjectVariable()){
-			sql += " and " + tp.getPredicateName() + ".S='" + joinedArgument + "'";
+			str_where += " and " + tp.getPredicateName() + ".S='" + joinedArgument + "'";
 		}
 		if (joinedPositionInTP=="O" && !tp.isObjectVariable()){
-			sql += " and " + tp.getPredicateName() + ".O='" + joinedArgument + "'";
+			str_where += " and " + tp.getPredicateName() + ".O='" + joinedArgument + "'";
 		}
-		sql += " group by " + aggregate_att; 
-		sql += " order by PHat desc, COV" ; 
 		
+		String str_group = " group by " + aggregate_att; 
+		String str_order = " order by PHat desc, COV" ; 
+		
+		//compute p_hats and n_hats for variable atom
+		sql = str_sel + str_from + str_where; 
 		//System.out.println(sql);
-		
 		ArrayList<ArrayList<String>> listTuples = DBController.getTuples(sql);
 		if (listTuples == null)
 			return true;
 		
+		ArrayList<String> tuple = listTuples.get(0);
+		int p_hat = Integer.parseInt(tuple.get(0));
+		int n_hat = Integer.parseInt(tuple.get(1)) - p_hat;
+		listPHats.add(new KVPair<String, Integer>("--variable--", p_hat)); 
+		hmapNHats.put("--variable--", n_hat);
+		
+		//compute p_hats and n_hats for constant atoms
+		str_sel = str_sel.replaceFirst("select", "select " + aggregate_att + " , "); 
+		sql = str_sel + str_from + str_where + str_group + str_order;
+		//System.out.println(sql);
+		
+		listTuples = DBController.getTuples(sql);
+		if (listTuples == null)
+			return true;
+		
 		//constant, PHat, COV
-		for(ArrayList<String> tuple: listTuples){
-			String val = tuple.get(0);
-			int p_hat = Integer.parseInt(tuple.get(1));
-			int n_hat = Integer.parseInt(tuple.get(2)) - p_hat;
+		for(ArrayList<String> tuple1: listTuples){
+			String val = tuple1.get(0);
+			p_hat = Integer.parseInt(tuple1.get(1));
+			n_hat = Integer.parseInt(tuple1.get(2)) - p_hat;
 			listPHats.add(new KVPair<String, Integer>(val, p_hat)); 
 			hmapNHats.put(val, n_hat);
 		}
@@ -483,8 +499,24 @@ public class PGEngine implements QueryEngine {
 
 	@Override
 	public RDFSubGraphSet getTriplesByCNF(Clause cls) {
-		String sql = this.buildSQL(cls);
-		return doQuery(cls, sql);
+		if(containRDFType(cls)){
+			RDFSubGraphSet rltSet = new RDFSubGraphSet();
+			for(int i=0;i<GILPSettings.NUM_RDFTYPE_PARTITIONS;i++){
+				String newPred = "rdftype" + i; 
+				Clause convertedCls = replaceRDFType(cls, newPred);
+				String sql = this.buildSQL(convertedCls);
+				RDFSubGraphSet oneSet = doQuery(cls, sql);
+				if (i==0)
+					rltSet.setPredicates(oneSet.getPredicates());
+				for (RDFSubGraph sg: oneSet.getSubGraphs())
+					rltSet.addSubGraph(sg);
+			}			
+			return rltSet;
+		}
+		else{
+			String sql = this.buildSQL(cls);
+			return doQuery(cls, sql);
+		}
 	}
 		
 	// get at most @num sub-graphs
@@ -578,12 +610,23 @@ public class PGEngine implements QueryEngine {
 		System.out.println("#######################################################");
 		try {
 			System.out.println("query is:" + cls.toString());
-			RDFSubGraphSet rlt = pg.getTriplesByCNF(cls,10);
-			System.out.println("results:");
+			RDFSubGraphSet rlt = pg.getTriplesByCNF(cls);
+			System.out.println("There are " + rlt.getSubGraphs().size() + " results:");
 			if (rlt!=null){
-				for (RDFSubGraph twig: rlt.getSubGraphs()){
-					System.out.println(twig.toString());
+				ArrayList<Triple> triples = rlt.getTriplesByPredicate("hasGivenName");
+				RandomAccessFile file = new RandomAccessFile("/home/jchen/gilp/chinese_persons.txt","rw");
+				
+				for (Triple t: triples){
+					String str = t.toString();
+					str = str.replaceAll("<", "");
+					str = str.replaceAll(">", "");
+					file.writeBytes(str + " -1\n");
+					System.out.println(t);
 				}
+				//for (RDFSubGraph twig: rlt.getSubGraphs()){
+				//	System.out.println(twig.toString());
+				//}
+				file.close();
 			}
 			else{
 				System.out.println("Empty results set.");
@@ -641,7 +684,7 @@ public class PGEngine implements QueryEngine {
 		PGEngine pg = new PGEngine();
 		
 		RDFPredicate ex_tp = new RDFPredicate(); 
-		ex_tp.setPredicateName("rdftype");
+		ex_tp.setPredicateName("hasFamilyName");
 		ex_tp.setSubject("?s1");
 		ex_tp.setObject("?o2");
 		
@@ -660,7 +703,7 @@ public class PGEngine implements QueryEngine {
 	}
 	
 	public static void main(String[] args){
-		testSimpleQuery();		
+		testPNHats();		
 	}
 
 }

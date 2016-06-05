@@ -52,25 +52,33 @@ public class SimpleCNFQueryEngine implements QueryEngine {
 	@Override
 	/*retrieve RDF triples by a conjunctive query in the format of a Clause.*/
 	public RDFSubGraphSet getTriplesByCNF(Clause cls){
-		/*we only support at most two predicates now. 
-		 * */
-	 	if (cls.getBodyLength()==0){
+		//TODO remove comparators here 
+		Clause clsWithoutComparators = cls.clone();
+		ArrayList<RDFPredicate> comparators = new ArrayList<>();
+		Iterator<Predicate> myIter = clsWithoutComparators.getIterator();
+		while(myIter.hasNext()){
+			RDFPredicate tp = (RDFPredicate)myIter.next();
+			if(tp.isPredicateComparator()){
+				comparators.add(tp.clone());
+				myIter.remove();
+			}
+		}	
+		
+		if (clsWithoutComparators.getBodyLength()==0){
 			System.out.println(this.getClass().getName() + ":ERROR! The body of the clause is empty1");
 			return null;
 		}
-		else if (cls.getBodyLength()==1){
-			RDFPredicate tp = (RDFPredicate)cls.getIterator().next();
+		else if (clsWithoutComparators.getBodyLength()==1){
+			RDFPredicate tp = (RDFPredicate)clsWithoutComparators.getIterator().next();
 			ArrayList<Triple> listTriples = selectTriplesByPattern(tp);	 
 			return buildSubGraphSet(listTriples, tp);
 		}
 		else{			
-			Iterator<Predicate> myIter = cls.getIterator();
-			
-			ArrayList<RDFPredicate> triple_patterns = new ArrayList<RDFPredicate>();
-			
+			myIter = clsWithoutComparators.getIterator();			
+			ArrayList<RDFPredicate> triple_patterns = new ArrayList<RDFPredicate>();			
 			while(myIter.hasNext()){
 				RDFPredicate tp = (RDFPredicate)myIter.next();
-				triple_patterns.add(tp.clone());
+				triple_patterns.add(tp.clone()); 
 			}			
 			 
 			//record whether a pattern is joined
@@ -107,8 +115,67 @@ public class SimpleCNFQueryEngine implements QueryEngine {
 			} 
 			if (num>0)//there exist some triple patterns cannot be joined, hence no result
 				return null;
-			else 
+			else{ 
+				int nc = comparators.size();
+				if (nc>0){
+					ArrayList<RDFSubGraph> matchedSGs = new ArrayList<>();
+					for (RDFSubGraph sg: rlts.getSubGraphs()){
+						boolean matched = false;
+						for(RDFPredicate cmpTP : comparators){
+							boolean findSub = false, findObj = false;
+							String sub="", obj=""; 
+							
+							//if an argument of the comparator is a constant, we do not need to find the matched assignment in the SG
+							if(!cmpTP.isSubjectVariable()){
+								sub = cmpTP.getSubject();
+								findSub = true;
+							}
+							if (!cmpTP.isObjectVariable()){
+								obj = cmpTP.getObject();
+								findObj = true;
+							}
+							
+							//at least one argument in the comparator should be a variable
+							myIter = clsWithoutComparators.getIterator();	
+							int i = 0;
+							while(myIter.hasNext()){
+								RDFPredicate tp = (RDFPredicate)myIter.next();
+								Triple crntTriple = sg.getTriples().get(i++);
+								if(!findSub){
+									if(tp.getSubject().equals(cmpTP.getSubject())){
+										sub = crntTriple.get_subject();
+										findSub = true;	
+									}else if(tp.getObject().equals(cmpTP.getSubject())){
+										sub = crntTriple.get_obj();
+										findSub = true;
+									} 
+								}
+								if(!findObj){
+									if(tp.getSubject().equals(cmpTP.getObject())){
+										obj = crntTriple.get_subject();
+										findObj = true;										
+									}else if(tp.getObject().equals(cmpTP.getObject())){
+										obj = crntTriple.get_obj();
+										findObj = true;
+									} 	
+								}
+								
+								if(findSub && findObj){
+									matched = true;
+									break;
+								}
+							}
+							
+							if (matched && RDFPredicate.satisfyComparison(cmpTP.getPredicateName(), sub, obj)){
+								matchedSGs.add(sg.clone());
+							}							
+						}//for(RDFPredicate cmpTP : comparators)
+					}//for (RDFSubGraph sg: rlts.getSubGraphs())		
+					rlts.getSubGraphs().clear();
+					rlts.getSubGraphs().addAll(matchedSGs);
+				}
 				return rlts;
+			}
 		}		 
 	}
 	 
@@ -172,7 +239,7 @@ public class SimpleCNFQueryEngine implements QueryEngine {
 			} 
 		}
 		 
-		if (joins==null)
+		if (joinConditions.isEmpty())
 			return null;
 
 		// build a new sug_graph set with one more predicate
@@ -185,15 +252,15 @@ public class SimpleCNFQueryEngine implements QueryEngine {
 		// for each sub-graph, try to math with each triple
 		for (RDFSubGraph sg : sub_graphs.getSubGraphs()) {
 			for (Triple t : triples) {
-				//for each triple t, there could be multiple triple patterns in the sub_graph which can join t
+				//for each triple t, there could be multiple triple patterns in the sub_graph which can join t				
+				boolean joinable = true;
+				
 				for (JoinCondition jc: joinConditions){
 					int join_tp_idx = jc._pattern_idx;
 					int join_pos1 = 1, join_pos2=1;
 					
 					//two triples may have at most four join types simultaneously, all join requirements should be met such that 
-					// the join is success					
-					boolean joinable = true;
-					
+					// the join is success
 					for (JoinType jt: jc._joins){
 						switch (jt){
 						case SS: 
@@ -209,22 +276,22 @@ public class SimpleCNFQueryEngine implements QueryEngine {
 							join_pos1 = 2; join_pos2 = 2; 
 							break;
 						}
-						
 						if (!sg.match(t, join_tp_idx, join_pos1, join_pos2)) {
 							joinable = false;
 							break;							
 						}
-					}
+					}//for (JoinType jt: jc._joins)
 					
-					if (joinable){
-						RDFSubGraph new_sg = sg.clone();
-						new_sg.addTriple(t.clone());
-						sg_set.addSubGraph(new_sg);
-					}
-				}				
+				}//for (JoinCondition jc: joinConditions)
 				
-			}
-		}
+				if (joinable){
+					RDFSubGraph new_sg = sg.clone();
+					new_sg.addTriple(t.clone());
+					sg_set.addSubGraph(new_sg);
+				}
+				
+			}//for (Triple t : triples)
+		}//for (RDFSubGraph sg : sub_graphs.getSubGraphs()) 
 				
 		 
 		if (sg_set.getSubGraphs().size()==0)
@@ -237,6 +304,55 @@ public class SimpleCNFQueryEngine implements QueryEngine {
 	//                   unit  tests
 			
 	//###############################################################################
+	
+	static void testComparators(){
+		ArrayList<Triple> dataset = new ArrayList<Triple>();
+		Triple t = new Triple("Deng_Xiaoping","hasChild","Deng_Pufang");
+		dataset.add(t);
+		t = new Triple("Deng_Xiaoping","hasGivenName","Deng");
+		dataset.add(t);
+		t = new Triple("Deng_Pufang","hasGivenName","Deng");
+		dataset.add(t);
+		 
+		
+		Clause cls = new ClauseSimpleImpl();
+		RDFPredicate tp = new RDFPredicate();
+		tp.setSubject(new String("?p1"));
+		tp.setPredicateName("hasChild");
+		tp.setObject(new String("?p2"));
+		cls.addPredicate(tp);
+		
+		tp = new RDFPredicate();
+		tp.setSubject(new String("?p1"));
+		tp.setPredicateName("hasGivenName");
+		tp.setObject(new String("?n1"));
+		cls.addPredicate(tp);
+		
+		tp = new RDFPredicate();
+		tp.setSubject(new String("?p2"));
+		tp.setPredicateName("hasGivenName");
+		tp.setObject(new String("?n2"));
+		cls.addPredicate(tp);
+		
+		
+		tp = new RDFPredicate();
+		tp.setSubject(new String("?n1"));
+		tp.setPredicateName("equalTo");
+		tp.setObject(new String("?n2"));
+		cls.addPredicate(tp);
+		
+		SimpleCNFQueryEngine sqe = new SimpleCNFQueryEngine();
+		sqe.setDataSet(dataset);
+		
+		RDFSubGraphSet rlt = sqe.getTriplesByCNF(cls);
+		if (rlt != null) {
+			for (RDFSubGraph twig : rlt.getSubGraphs()) {
+				System.out.println(twig.toString());
+			}
+		} else {
+			System.out.println("Empty results set.");
+		}
+	}
 	
 	static void testNumeric(){
 		ArrayList<Triple> dataset = new ArrayList<Triple>();
@@ -314,6 +430,13 @@ public class SimpleCNFQueryEngine implements QueryEngine {
 		tp.setPredicateName("hasNationality");
 		tp.setObject(new String("?o2"));		
 		cls.addPredicate(tp);
+		
+		tp = new RDFPredicate();
+		tp.setSubject(new String("?s1"));
+		tp.setPredicateName("hasGender");
+		tp.setObject(new String("Male"));		
+		cls.addPredicate(tp);
+		
 	
 		SimpleCNFQueryEngine sqe = new SimpleCNFQueryEngine();
 		sqe.setDataSet(dataset);
@@ -325,15 +448,12 @@ public class SimpleCNFQueryEngine implements QueryEngine {
 			}
 		} else {
 			System.out.println("Empty results set.");
-		}
+		}	
 		
-		ArrayList<String> vars = new ArrayList<>();
-		vars.add("?o1");
-		vars.add("?s1");	
 	}
 	
 	public static void main(String[] args){
-		testNumeric();
+		testComparators();
 	}
 
 }

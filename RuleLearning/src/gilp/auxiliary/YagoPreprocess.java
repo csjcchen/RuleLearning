@@ -424,6 +424,32 @@ public class YagoPreprocess {
 		return num>0;
 	}
 	
+	static void addFeedbacks(){
+		RandomAccessFile file;
+		try{
+			file = new RandomAccessFile("/home/jchen/gilp/chinese_persons.txt","r");
+			String line = "";
+			while ((line = file.readLine()) != null) {
+				StringTokenizer st = new StringTokenizer(line);
+				String s = st.nextToken();
+				String p = st.nextToken();
+				String o = st.nextToken();
+				String cmt = st.nextToken();
+				if (!cmt.equals("-1") && !cmt.equals("1")){
+					System.out.println("Error!");
+					break;
+				}			
+				String sql = "insert into feedbacks(s, p, o, cmt) values(";
+				sql += "'" + s + "','" + p + "','" + o + "'," + cmt + ")";
+				DBController.exec_update(sql);
+			//	System.out.println(sql);
+			}
+			file.close();
+		}catch(Exception ex){
+			ex.printStackTrace(System.out);
+		}
+	}
+	
 	static void addChinesePeople(){
 		//wikicat_Chinese_people
 		//if rdftype(x, P) then rdftype(x, wikicat_Chinese_people)
@@ -472,6 +498,6 @@ public class YagoPreprocess {
 	}
 	
 	public static void main(String[] args){
-		addChinesePeople();
+		addFeedbacks();
 	}
 }

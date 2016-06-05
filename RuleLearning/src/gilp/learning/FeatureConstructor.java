@@ -71,8 +71,7 @@ public class FeatureConstructor {
 				//Now, just ignore this!!!			
 			//}			
 			for (String pr_name : pred_names){		
-				//TODO special logic for rdftype 
-				
+			 	
 				//introduce a new variable in the subject
 				String var =  r0.getNextSubjectVar(false);
 				RDFPredicate tp = new RDFPredicate(); 
@@ -179,6 +178,7 @@ public class FeatureConstructor {
 		}
 		
 		for (KVPair<String, Integer> kv: listPHats){
+			
 			String a = kv.get_key();
 			double p_hat = (double)kv.get_value();
 			double n_hat = (double)hmapNHats.get(a);
@@ -187,25 +187,39 @@ public class FeatureConstructor {
 			if (h_max < tau)
 				break; //the remaining features cannot have scores larger than tau
 
-			if (h>tau){
+			if (h>tau-GILPSettings.EPSILON){
 				//construct a new tp by replacing the fresh variable in @tp with a 
-							
- 				
  				RDFPredicate new_tp = tp.clone();
- 				if (tp.getSubject().equals(fresh_vars.get(0)))
- 					new_tp.setSubject(a); 				
- 				else if (tp.getObject().equals(fresh_vars.get(0)))
- 					new_tp.setObject(a);
  				
- 				RDFRuleImpl new_r = this._baseRP.getRule().clone();
+ 				if (!a.equals("--variable--")){
+ 					if (tp.getSubject().equals(fresh_vars.get(0)))
+ 	 					new_tp.setSubject(a); 				
+ 	 				else if (tp.getObject().equals(fresh_vars.get(0)))
+ 	 					new_tp.setObject(a);	
+ 				}
+ 				
+ 				tau = addCandidate(candidates, tau, new_tp, p_hat, n_hat); 
+ 				
+ 				/*RDFRuleImpl new_r = this._baseRP.getRule().clone();
  				new_r.get_body().addPredicate(new_tp);
  				ExpRulePackage new_rp = new ExpRulePackage(new_r, this._baseRP, p_hat, n_hat);
  				candidates.add(new_rp);
-				tau = updateCandidates(candidates);
+				tau = updateCandidates(candidates);*/
 			}
 		} 
+		
+		
 		return tau;
 	}	
+	
+	private double addCandidate(PriorityQueue<ExpRulePackage> candidates, double tau, RDFPredicate new_tp, double p_hat, double n_hat){
+		RDFRuleImpl new_r = this._baseRP.getRule().clone();
+		new_r.get_body().addPredicate(new_tp);
+		ExpRulePackage new_rp = new ExpRulePackage(new_r, this._baseRP, p_hat, n_hat);
+		candidates.add(new_rp);
+		tau = updateCandidates(candidates);
+		return tau;
+	}
 	
 	//input table
 	/*
@@ -232,8 +246,16 @@ public class FeatureConstructor {
 		if (keys.length>0)
 			this.getClass();
 		int i = 0;
+		
+		int var_phat = -1, var_nhat = -1;
+
 		for (KVPair<String, Integer> kv: listPHats){
-			keys[i++] = Double.parseDouble(kv.get_key());
+			if (kv.get_key().equals("--variable--")){
+				var_phat = kv.get_value();
+				var_nhat = hmapNHats.get(kv.get_key());
+			}				
+			else
+				keys[i++] = Double.parseDouble(kv.get_key());
 		}
 		
 		double[] bound_points = NumericFeatureTools.calcBoundPoints(keys);
@@ -272,9 +294,12 @@ public class FeatureConstructor {
 		
 		Arrays.sort(temp_phats, new NumericalKVPairComparator());
 		listPHats.clear();
+		listPHats.add(new KVPair<String, Integer>("--variable--", var_phat));
+		hmapNHats.put("--variable--", var_nhat); 
 		for (i=temp_phats.length-1;i>=0;i--){
 			listPHats.add(temp_phats[i]);
 		}
+		
 	}
 	
 	//calculate and return the k^th highest quality score and remove all candidates with scores lower than the computed threshold
