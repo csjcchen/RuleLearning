@@ -178,7 +178,130 @@ public class PGEngine implements QueryEngine {
 	
  		return sel + from + where;
 	}
+
+	//compute and return the head coverage of the input rule
+	//@n the number of returned triples 
+	public ArrayList<Triple> getHeadCoverage(RDFRuleImpl r, int n) {
+		// get the relation name appearing in the head
+		RDFPredicate head = (RDFPredicate) r.get_head();
+		String head_relation = head.mapToOriginalPred().getPredicateName();
+		head_relation = head_relation + "_1";// the relations will be renamed in
+												// the buildSQL
+		String sel = "SELECT  " + head_relation + ".*  ";
+		
+		if(containRDFType(r.get_body())){
+			RDFSubGraphSet rltSet = new RDFSubGraphSet();
+			for(int i=0;i<GILPSettings.NUM_RDFTYPE_PARTITIONS;i++){
+				String newPred = "rdftype" + i; 
+				Clause convertedCls = replaceRDFType(r.get_body(), newPred);
+				String sql = this.buildSQL(convertedCls);
+				sql =  sql.substring(sql.indexOf("from"));		
+				sql = sel + sql;				
+				sql += " order by random() ";
+				sql += "  limit " + n; 
+				
+				Clause cls = new ClauseSimpleImpl();
+				cls.addPredicate(head.mapToOriginalPred());
+				
+				RDFSubGraphSet oneSet = doQuery(cls, sql);
+				if (i==0)
+					rltSet.setPredicates(oneSet.getPredicates());
+				for (RDFSubGraph sg: oneSet.getSubGraphs())
+					rltSet.addSubGraph(sg);
+			}
+			
+			if(rltSet.getSubGraphs().size()>n){
+				int s = rltSet.getSubGraphs().size();
+				int[] isChosen = new int[s];
+				for (int i = 0; i < s; i++) {
+					isChosen[i] = 0;
+				}
+				ArrayList<RDFSubGraph> listChosenSGs = new ArrayList<>();
+				while (listChosenSGs.size() < Math.min(n, s)) {
+					int idx = (int) Math.round(Math.random() * (s - 1));
+					if (isChosen[idx] == 0) {
+						RDFSubGraph sg = rltSet.getSubGraphs().get(idx);
+						isChosen[idx] = 1;
+						listChosenSGs.add(sg);
+					}
+				}
+				rltSet.getSubGraphs().clear();
+				rltSet.getSubGraphs().addAll(listChosenSGs);
+			}
+			
+			return rltSet.getAllTriples();		
+			 
+		}
+		else{
+			String sql = this.buildSQL(r.get_body());
+			sql =  sql.substring(sql.indexOf("from"));		
+			sql = sel + sql;				
+			sql += " order by random() ";
+			sql += "  limit " + n; 
+			Clause cls = new ClauseSimpleImpl();
+			cls.addPredicate(head.mapToOriginalPred());
+			RDFSubGraphSet rltSet = doQuery(cls, sql);
+			return rltSet.getAllTriples();
+		}
+		
+		
+		//String sql = this.buildSQL(r.get_body());
+		// replace the Select part in the SQL
+		//sql = sql.substring(sql.indexOf("from"));
+		//String sel = "SELECT distinct " +  head_relation + ".* ";
+		//sql = sel + sql; 
+		
+		
+		
+		//RDFSubGraphSet sg_set = doQuery(cls, sql);
+		
+		//TODO Now we do not consider the partitioned tables of rdf:type, since rdftype does not appear in the head
+		
+		
+		//return null;
+	}
 	
+	//compute and return the size of head coverage of the input rule
+	public int getHeadCoverageSize(RDFRuleImpl r){
+		
+		/*basically the main steps are to build SQL
+		 * use the body to generate a SQL
+		 * project the result on the head
+		 * count
+		 * hasNationality(x, China) and hasFamilyName(x, y) --> incorrect_hasFamilyName(x, y)
+		 * 
+		 * select count (distinct hasFamilyName.*) from hasNationality, hasFamilyName where hasNationality.S = hasFamilyName.S
+		 * and  hasNationality.O = 'China'
+		 * */		
+		//get the relation name appearing in the head
+		RDFPredicate head = (RDFPredicate) r.get_head();
+		String head_relation = head.mapToOriginalPred().getPredicateName();
+		head_relation = head_relation + "_1";//the relations will be renamed in the buildSQL
+		String sel = "SELECT count(distinct " + head_relation + ".*) ";
+		//TODO we now do not consider the case that rdftype appears in the head
+		
+		if(containRDFType(r.get_body())){
+			int num = 0;
+			for(int i=0;i<GILPSettings.NUM_RDFTYPE_PARTITIONS;i++){
+				String newPred = "rdftype" + i; 
+				Clause convertedCls = replaceRDFType(r.get_body(), newPred);
+				String sql = this.buildSQL(convertedCls);
+				sql =  sql.substring(sql.indexOf("from"));		
+				sql = sel + sql;				
+				String rlt = DBController.getSingleValue(sql);
+				num += Integer.parseInt(rlt);
+			}
+			return num;
+		}
+		else{
+			String sql = this.buildSQL(r.get_body());
+			// replace the Select part in the SQL
+			sql = sql.substring(sql.indexOf("from"));
+			sql = sel + sql;				
+			String rlt = DBController.getSingleValue(sql);
+			return Integer.parseInt(rlt);			
+		}
+	}
 	 
 	//Find the P_Hats (true positives) and and NHats (false positive) for a rule which is obtained by expanding @ro with @tp
 	//One argument  of @tp must be shared with @r0, and the other argument, say X, of @tp is a fresh variable.  
@@ -589,6 +712,39 @@ public class PGEngine implements QueryEngine {
 	//                   unit  tests
 	
 	//###############################################################################
+	
+	static void testHeadCoverage(){
+		Clause cls = new ClauseSimpleImpl();
+		RDFPredicate tp = new RDFPredicate();
+		tp.setSubject(new String("?s"));
+		tp.setPredicateName("hasGivenName");
+		tp.setObject(new String("?o"));
+		cls.addPredicate(tp);
+	 
+		tp = new RDFPredicate();
+		tp.setSubject(new String("?s"));
+		tp.setPredicateName("rdftype");
+		tp.setObject(new String("wikicat_Chinese_people"));		
+		cls.addPredicate(tp);
+		
+		RDFRuleImpl r = new RDFRuleImpl();
+		r.set_body(cls);
+		tp = new RDFPredicate();		
+		tp.setSubject(new String("?s"));
+		tp.setPredicateName("hasGivenName");
+		tp.setObject(new String("?o"));
+		tp = tp.mapToIncorrectPred();
+		r.set_head(tp);
+		
+		PGEngine pg = new PGEngine();
+		ArrayList<Triple> triples = pg.getHeadCoverage(r, 10);
+		for (Triple t:triples){
+			System.out.println(t);
+		}
+		int num = pg.getHeadCoverageSize(r);
+		System.out.println(num);
+	}
+	
 	static void testSimpleQuery(){
 		Clause cls = new ClauseSimpleImpl();
 		RDFPredicate tp = new RDFPredicate();
@@ -703,7 +859,7 @@ public class PGEngine implements QueryEngine {
 	}
 	
 	public static void main(String[] args){
-		testPNHats();		
+		testHeadCoverage();		
 	}
 
 }

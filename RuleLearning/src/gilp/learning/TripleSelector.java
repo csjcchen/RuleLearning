@@ -1,6 +1,7 @@
 package gilp.learning;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 
 import gilp.feedback.Feedback;
 import gilp.rdf.PGEngine;
@@ -16,6 +17,26 @@ import gilp.rule.*;
  * */
 public class TripleSelector {
 	
+	//given a rule and current F, choose a set of triples so that this rule may be classified (accept or reject)
+	//we tend to return the minimum possible number of tuples which can make the rule classified
+	public ArrayList<Triple> chooseTriples(RulePackage rp){
+		/* First, we calculate the current precision of this rule (this should be provided by a function outside of this class. 
+		 * We then estimate min_num, the minimum number of tuples.
+		 * We also need to compare with the global setting MAX_NUM_FB, maximum number of feedbacks for a single rule. If min_num + current 
+		 * feedbacks covered by this rule exceeds the MAX_NUM_FB, we then return an empty set.
+		 * Otherwise, we randomly choose min_num tuples from the head coverage of this rule. 
+		 * */
+		
+		int min_num = calcMinimumRequiredNum(rp); 
+		if (min_num>0){
+			return this.sampleHCTriples(rp, min_num);
+		}
+		else
+			return new ArrayList<Triple>();
+	}
+	
+	
+	@Deprecated
 	public ArrayList<Triple> selectTriples(ArrayList<RulePackage> listRules){
 		//TODO we need some limitations on the number of total triples we want to probe
 		ArrayList<Triple> listRlts = new ArrayList<Triple>();
@@ -31,7 +52,7 @@ public class TripleSelector {
 		return listRlts;
 	}
 	
-	
+	@Deprecated
 	ArrayList<Triple> selectExtendedTriples(RulePackage rp){
 		//TODO n should not be an independent parameter, and should be adjusted according to an overall resource limit
 		int n = 5;	//# of samples for each rule
@@ -69,6 +90,39 @@ public class TripleSelector {
 		return list_rlts;
 	}
 	
+	
+	//randomly choose @n triples from the head coverage of the input rule
+	ArrayList<Triple> sampleHCTriples(RulePackage rp, int n){
+		HashMap<String, String> hmapExistedFB = new HashMap<>();
+		for (Triple t: rp._fb.getAllTriples()){
+			hmapExistedFB.put(t.toString(), "");
+		}
+		
+		PGEngine qe = new PGEngine();
+		
+		RDFRuleImpl r = rp.getRule();
+		
+		//try to get at most 10*n triples to be used for sampling
+		ArrayList<Triple> listTriples = qe.getHeadCoverage(r, 10*n);
+		
+		int s = listTriples.size(); 
+		int[] isChosen = new int[s];
+		for(int i=0;i<s;i++){
+			isChosen[i] = 0;
+		}
+		ArrayList<Triple> sampled_triples = new ArrayList<Triple> ();
+		while(sampled_triples.size()<Math.min(s, n)){
+			int idx = (int)Math.round(Math.random()*(s-1));
+			if (isChosen[idx] == 0 && hmapExistedFB.get(listTriples.get(idx).toString())==null){
+				sampled_triples.add(listTriples.get(idx).clone());
+				isChosen[idx] = 1;
+			}	
+		}
+
+		return sampled_triples;
+	}
+	
+	@Deprecated
 	//randomly choose @n triples from those covered by @r in the KB
 	ArrayList<Triple> sampleTriples(Rule r, int n){
 		PGEngine qe = new PGEngine();
@@ -118,6 +172,45 @@ public class TripleSelector {
 		
 		return sampled_triples;
 	}
+	
+	//calc the minimum number of feedbacks which may make the rule classified
+	//if the total num of feedbacks exceeds the global setting MAX_NUM_FB, return 0;
+	private int calcMinimumRequiredNum(RulePackage rp){
+		int p0 = (int)rp.getPHat();
+		int n0 = (int)rp.getNHat();
+		int p = p0, n= n0; 
+		
+		//assume the new fbs are all negative 
+		while(p+n<=GILPSettings.MAX_NUM_FEEDBACK){
+			if(canAccept(p, n) || canReject(p,n)){
+				break;
+			}
+			n++;
+		}
+		int delta_n = n - n0;
+		
+		//assume the new fbs are all positive
+		n = n0;
+		while(p+n<=GILPSettings.MAX_NUM_FEEDBACK){
+			if(canAccept(p, n) || canReject(p,n)){
+				break;
+			}
+			p++;
+		}
+		int delta_p = p-p0;
+		
+		
+		return delta_p>delta_n?delta_n:delta_p;
+	}
+	
+	boolean canAccept(int p, int n){
+		return false;
+	}
+	
+	boolean canReject(int p, int n){
+		return false;		
+	}
+	
 	
 	//calculate the number of samples in order to satisfy the given quality threshold
 	//@param p: the average of the the samples

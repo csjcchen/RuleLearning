@@ -43,6 +43,7 @@ public class GILPSettings {
 	
 	public static int MINIMUM_MAX_MATCHED = 1;
 	
+	public static int MAX_NUM_FEEDBACK = 1;
 	
 	public static double LAMBDA;
 		//the parameter to trade-off between support scores of DB and feedback 
@@ -159,6 +160,7 @@ public class GILPSettings {
 		MAXIMUM_RULE_LENGTH = Integer.parseInt(sim_prop.getProperty("MAXIMUM_RULE_LENGTH"));
 		IS_DEBUG = (sim_prop.getProperty("IS_DEBUG").equals("true"));
 	 	MINIMUM_PRECISION = Double.parseDouble(sim_prop.getProperty("MINIMUM_PRECISION"));
+	 	MAX_NUM_FEEDBACK = Integer.parseInt(sim_prop.getProperty("MAX_NUM_FB"));
 	    
 	 	DB_ENGINE = Integer.parseInt(sim_prop.getProperty("DB_ENGINE"));
 	 		//1: RDF3X; 2: PostgreSQL; 	
