@@ -154,6 +154,7 @@ public class PGEngine implements QueryEngine {
 				continue;//not a join
 			else{
 				for (int i=0;i<joinedPredicates.size()-1;i++){
+					hasWhereClause = true;
 					JoinedPredicate pr1 = joinedPredicates.get(i);
 					JoinedPredicate pr2 = joinedPredicates.get(i+1);
 					sb_where.append(pr1.pred_name + "." + pr1.join_pos);
@@ -262,7 +263,7 @@ public class PGEngine implements QueryEngine {
 	}
 	
 	//compute and return the size of head coverage of the input rule
-	public int getHeadCoverageSize(RDFRuleImpl r){
+	public boolean isLargerThanMinHC(RDFRuleImpl r){
 		
 		/*basically the main steps are to build SQL
 		 * use the body to generate a SQL
@@ -277,30 +278,67 @@ public class PGEngine implements QueryEngine {
 		RDFPredicate head = (RDFPredicate) r.get_head();
 		String head_relation = head.mapToOriginalPred().getPredicateName();
 		head_relation = head_relation + "_1";//the relations will be renamed in the buildSQL
-		String sel = "SELECT count(distinct " + head_relation + ".*) ";
+		String sel = "SELECT " + head_relation + ".* ";
 		//TODO we now do not consider the case that rdftype appears in the head
-		
-		if(containRDFType(r.get_body())){
-			int num = 0;
+	 	if(containRDFType(r.get_body())){
 			for(int i=0;i<GILPSettings.NUM_RDFTYPE_PARTITIONS;i++){
 				String newPred = "rdftype" + i; 
 				Clause convertedCls = replaceRDFType(r.get_body(), newPred);
 				String sql = this.buildSQL(convertedCls);
 				sql =  sql.substring(sql.indexOf("from"));		
 				sql = sel + sql;				
-				String rlt = DBController.getSingleValue(sql);
-				num += Integer.parseInt(rlt);
+				if (estimateCompareHC(sql))
+					return true;
 			}
-			return num;
+			return false;
 		}
 		else{
 			String sql = this.buildSQL(r.get_body());
 			// replace the Select part in the SQL
 			sql = sql.substring(sql.indexOf("from"));
 			sql = sel + sql;				
-			String rlt = DBController.getSingleValue(sql);
-			return Integer.parseInt(rlt);			
+			return estimateCompareHC(sql);
+			//String rlt = DBController.getSingleValue(sql);
+			//return Integer.parseInt(rlt);			
 		}
+	}
+	
+	//estimate whether the result of the sql is larger than min_HC
+	//this function is useful if the result of sql is too large
+	private boolean estimateCompareHC(String sql){
+		//idea  1. sql = sql + limit 100*min_HC
+		//select distinct * from (sql) as temp;
+		//excec the query and check whether the num of results is large enough
+		sql = sql + " limit " + 100*GILPSettings.MINIMUM_HC; 
+		sql = "(" + sql + ")"; 
+		sql = "select distinct * from " + sql + " as temp"; 
+		
+		Connection conn = null;
+		PreparedStatement pstmt = null;
+		ResultSet rs = null;				 
+		int num = 0;
+		try
+		{
+			conn = DBController.getConn();
+			pstmt = conn.prepareStatement(sql);		 
+			rs = pstmt.executeQuery();			 
+			while(rs.next()){
+				num ++;
+				if (num>=GILPSettings.MINIMUM_HC)
+					break;
+			}
+				
+		}catch (Exception e)
+		{
+			GILPSettings.log(this.getClass().getName() + "Error! ");
+			e.printStackTrace();
+			return false;
+		}finally
+		{
+			DBPool.closeAll(conn, pstmt, rs);
+		}	
+		
+		return (num>=GILPSettings.MINIMUM_HC);
 	}
 	 
 	//Find the P_Hats (true positives) and and NHats (false positive) for a rule which is obtained by expanding @ro with @tp
@@ -684,7 +722,7 @@ public class PGEngine implements QueryEngine {
 		// initialize the graph set
 		RDFSubGraphSet sg_set = new RDFSubGraphSet();
 		sg_set.setPredicates(preds);
-
+ 
 		// for each result tuple, we mount a sub-graph
 		try {
 			while (rlt.next()) {
@@ -741,8 +779,8 @@ public class PGEngine implements QueryEngine {
 		for (Triple t:triples){
 			System.out.println(t);
 		}
-		int num = pg.getHeadCoverageSize(r);
-		System.out.println(num);
+		if(pg.isLargerThanMinHC(r))
+			System.out.println("HC is large enough");
 	}
 	
 	static void testSimpleQuery(){

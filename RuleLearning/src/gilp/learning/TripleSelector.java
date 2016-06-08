@@ -3,19 +3,58 @@ package gilp.learning;
 import java.util.ArrayList;
 import java.util.HashMap;
 
+import gilp.feedback.Comment;
 import gilp.feedback.Feedback;
 import gilp.rdf.PGEngine;
 import gilp.rdf.RDF3XEngine;
 import gilp.rdf.RDFSubGraph;
 import gilp.rdf.RDFSubGraphSet;
 import gilp.rdf.Triple;
-import gilp.rule.*; 
+import gilp.rule.*;
+import gilp.simulation.FBGeneratorFromFacts; 
 
 /*
  * choose more triples from KB to obtain user feedbacks
  * CJC Dec.8, 2015
  * */
 public class TripleSelector {
+	static FBGeneratorFromFacts _FBGenerator = null;
+	
+	static {
+		if (_FBGenerator == null){
+			_FBGenerator = new FBGeneratorFromFacts();
+		}
+	}
+	
+	//verify a rule by pulling some feedbacks
+	//output: the newly pulled feedbacks will be stored into @rp
+	//return 1: accepted; 0: non-classified; -1:rejected.
+	public int verifyRule(RulePackage rp){
+		
+		ArrayList<Triple> chosenTriples = new ArrayList<>();
+		
+		while(true){
+			chosenTriples = this.chooseTriples(rp);
+			if(chosenTriples.size()==0){
+				return 0;
+			}
+			else{
+				Feedback new_fb = _FBGenerator.getComments(chosenTriples);
+				for(Comment cmt : new_fb.get_comments()){
+					rp._fb.get_comments().add(cmt);
+				}
+				rp.calcPN_Hats();
+				int p_hat = (int)rp.getPHat();
+				int n_hat = (int)rp.getNHat();
+				if(canAccept(p_hat, n_hat)){
+					return 1;
+				}
+				else if(canReject(p_hat, n_hat)){
+					return -1;
+				}
+			}
+		}
+	}
 	
 	//given a rule and current F, choose a set of triples so that this rule may be classified (accept or reject)
 	//we tend to return the minimum possible number of tuples which can make the rule classified
@@ -60,7 +99,7 @@ public class TripleSelector {
 		//TODO need to make k a global setting
 		RDFRuleImpl rdf_r = rp.getRule();
 		
-		FeatureConstructor f_c = new FeatureConstructor( rp, k); 
+		FeatureConstructor f_c = new FeatureConstructor( rp); 
 		ArrayList<ExpRulePackage> candi_rules = f_c.constructFeatures();
 			//try to extend/specialize the rule with data stored in the KB
 		/*if (GILPSettings.IS_DEBUG){

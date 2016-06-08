@@ -11,6 +11,8 @@ import gilp.rule.Clause;
 import gilp.rule.ClauseSimpleImpl;
 import gilp.rule.RDFRuleImpl;
 import gilp.rule.Rule;
+import gilp.learning.ExpRulePackage;
+import gilp.learning.FeatureConstructor;
 import gilp.learning.GILPSettings;
 import gilp.learning.RDFBFSLearner;
 import gilp.learning.RuleBaseManager;
@@ -86,19 +88,42 @@ public class Simulator {
 		 
 		candi_rules = learner.learn_rule(candi_rules);
 		
+		TripleSelector triple_sel = new TripleSelector();
+		
 		//1st phase: expand rule
 		int len = 1;
 		while (len < GILPSettings.MAXIMUM_RULE_LENGTH){
-			ArrayList<RulePackage> working_list = null;
+			ArrayList<RulePackage> working_list = chooseRPByLength(candi_rules, len);
 				//all rules in candi_rules whose length equal to len
 			for (RulePackage rp : working_list){
-				//get rp's child and put into candi_list				
+				int c = triple_sel.verifyRule(rp);
+					//verify this rule and store the obtained feedbacks
+	
+				//we do not need to expand a rule if it can be accepted
+				if (c<=0){
+					//get rp's child and put into candi_list		
+					FeatureConstructor f_c = new FeatureConstructor( rp); 
+					ArrayList<ExpRulePackage> expanded_rules = f_c.constructFeatures();
+					
+					//each child will inherit the feedbacks of its parent	
+					for (ExpRulePackage exRP: expanded_rules){
+						RulePackage child_rp = new RulePackage(exRP.getRule().clone(), rp.getFeedback(), rp);
+						candi_rules.add(child_rp);
+					}
+				}				
 			}
 			len++;
+		}		
+	}
+	
+	ArrayList<RulePackage> chooseRPByLength(ArrayList<RulePackage> origin_list, int len){
+		ArrayList<RulePackage> listRlts = new ArrayList<>();
+		for (RulePackage rp: origin_list){
+			if(rp.getRule().getLength() == len){
+				listRlts.add(rp);
+			}
 		}
-		
-		//2nd phase: BP of feedbacks 
-		
+		return listRlts;
 	}
  
 	void simulate(){

@@ -46,8 +46,8 @@ public class FeatureConstructor {
 	private double _P;//the number of consistent triples w.r.t _ro and _fb
 	private double _N;//the number of inconsistent triples w.r.t _ro and _fb	
 	
-	public FeatureConstructor(RulePackage rp, int k){
-		this._k = k;	
+	public FeatureConstructor(RulePackage rp){
+		//this._k = k;	
 		this._baseRP = rp;
 		this._P = this._baseRP.getPHat(); 
 		this._N = this._baseRP.getNHat();
@@ -84,7 +84,7 @@ public class FeatureConstructor {
 				tp.setPredicateName(pr_name);
 				tp.setSubject(U);//subject is shared with r0
 				tp.setObject(var);
-				listRlts.addAll(expand(tp)); 			
+				listRlts.addAll(expand(tp)); 	
 			}
 		}		
 		
@@ -169,6 +169,10 @@ public class FeatureConstructor {
 			generateHistograms(listPHats, hmapNHats);
 		}
 		
+		if (listPHats.size()>1){
+			int a = 1;
+		}
+		
 		for (KVPair<String, Integer> kv: listPHats){			
 			String a = kv.get_key();
 			double p_hat = (double)kv.get_value();
@@ -198,9 +202,13 @@ public class FeatureConstructor {
 			new_r.get_body().addPredicate(new_tp);
 			ExpRulePackage new_rp = new ExpRulePackage(new_r, this._baseRP, p_hat, n_hat);
 			
-			int numHC = qe.getHeadCoverageSize(new_r); 
-			if (numHC>GILPSettings.MINIMUM_HC){
+			if (qe.isLargerThanMinHC(new_r)){
 				listRlts.add(new_rp);
+				System.out.println(new_rp.getRule());
+			}
+			else{
+				System.out.println("cold rule:");
+				System.out.println(new_rp.getRule());
 			}
 		} 
 		return listRlts;
@@ -351,7 +359,7 @@ public class FeatureConstructor {
 		r.set_body(cls);
 		RulePackage rp = new RulePackage(r, fb, null);
 		
-		FeatureConstructor fc = new FeatureConstructor(rp, 1);
+		FeatureConstructor fc = new FeatureConstructor(rp);
 		
 		ArrayList<ExpRulePackage> list_candi_rules = fc.constructFeatures(); 			
 	
