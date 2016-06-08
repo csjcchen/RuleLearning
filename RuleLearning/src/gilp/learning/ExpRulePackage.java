@@ -15,7 +15,7 @@ import gilp.rule.RDFPredicate;
 import gilp.rule.RDFRuleImpl;
 
 //an expanded rule. 
-//CJC DEC 31, 2016
+//CJC DEC 31, 2015
 public class ExpRulePackage extends RulePackage {
 	
 	//For expanded rules, we do not need to store their feedbacks, the pHat and nHat will be given.	 

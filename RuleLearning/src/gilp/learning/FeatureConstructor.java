@@ -62,8 +62,6 @@ public class FeatureConstructor {
 		RDFRuleImpl r0 = this._baseRP.getRule();	
 		ArrayList<String> args = r0.getArguments();
 		
-		double tau = GILPSettings.MINIMUM_FOIL_GAIN;			 
-		PriorityQueue<ExpRulePackage> candidates = new PriorityQueue<ExpRulePackage>(10 * this._k, new RuleQualityComparator());		
 		ArrayList<ExpRulePackage> listRlts = new ArrayList<ExpRulePackage>(); 
 		for (String U: args){
 			//for (String V: args){					
@@ -78,7 +76,7 @@ public class FeatureConstructor {
 				tp.setPredicateName(pr_name);
 				tp.setSubject(var);
 				tp.setObject(U);//object is shared with r0					
-				tau = expand(tp, candidates, tau); 
+				listRlts.addAll(expand(tp)); 
 				
 				//introduce a new variable in the object
 				var =  r0.getNextObjectVar(false);
@@ -86,14 +84,10 @@ public class FeatureConstructor {
 				tp.setPredicateName(pr_name);
 				tp.setSubject(U);//subject is shared with r0
 				tp.setObject(var);
-				tau = expand(tp, candidates, tau); 				
+				listRlts.addAll(expand(tp)); 			
 			}
 		}		
 		
-		//only keep the top-k candidates 
-		updateCandidates(candidates);
-		
-		listRlts.addAll(candidates); 
 		return listRlts;
 	}
 	
@@ -143,13 +137,13 @@ public class FeatureConstructor {
 		return rltNHats;
 	}
 	
-	
-	//returned value is the new tau
-	//the @candidates will be also updated. 
-	double expand(RDFPredicate tp, PriorityQueue<ExpRulePackage> candidates, double tau){
+	//expand the original rule by appending the @tp and all constant atoms implied in this @tp
+	ArrayList<ExpRulePackage> expand(RDFPredicate tp){
 		PGEngine qe = new PGEngine(); 
 		ArrayList<KVPair<String, Integer>> listPHats = new ArrayList<>(); 
 		HashMap<String, Integer> hmapNHats = new HashMap<>();
+		
+		ArrayList<ExpRulePackage> listRlts = new ArrayList<>();
 		
 		if (tp.getPredicateName().equalsIgnoreCase("rdftype")){
 			//rdfType has multiple partitioned sub-tables
@@ -167,8 +161,6 @@ public class FeatureConstructor {
 		}
 		else
 			qe.getPHatNhats(this._baseRP, tp, listPHats, hmapNHats);
-		//if (tp.getPredicateName().indexOf("type")>=0)
-		//	this.getClass();
 		
 		ArrayList<String> fresh_vars = this._baseRP.getRule().findFreshArgument(tp);
 		
@@ -177,49 +169,52 @@ public class FeatureConstructor {
 			generateHistograms(listPHats, hmapNHats);
 		}
 		
-		for (KVPair<String, Integer> kv: listPHats){
-			
+		for (KVPair<String, Integer> kv: listPHats){			
 			String a = kv.get_key();
 			double p_hat = (double)kv.get_value();
 			double n_hat = (double)hmapNHats.get(a);
-			double h = QualityManager.evalQuality(p_hat, n_hat); 
-			double h_max = QualityManager.evalQuality(p_hat, 0); 
-			if (h_max < tau)
-				break; //the remaining features cannot have scores larger than tau
-
-			if (h>tau-GILPSettings.EPSILON){
-				//construct a new tp by replacing the fresh variable in @tp with a 
- 				RDFPredicate new_tp = tp.clone();
- 				
- 				if (!a.equals("--variable--")){
- 					if (tp.getSubject().equals(fresh_vars.get(0)))
- 	 					new_tp.setSubject(a); 				
- 	 				else if (tp.getObject().equals(fresh_vars.get(0)))
- 	 					new_tp.setObject(a);	
- 				}
- 				
- 				tau = addCandidate(candidates, tau, new_tp, p_hat, n_hat); 
- 				
- 				/*RDFRuleImpl new_r = this._baseRP.getRule().clone();
- 				new_r.get_body().addPredicate(new_tp);
- 				ExpRulePackage new_rp = new ExpRulePackage(new_r, this._baseRP, p_hat, n_hat);
- 				candidates.add(new_rp);
-				tau = updateCandidates(candidates);*/
+			//qualification condition: 1) covers the triples in the original rule's P_Hat
+									// 2) head coverage is higher than MINIMUM_HC in the global settings
+			//we check P_Hat first. Since all P_Hat are sorted in descending order, we can stop  if
+			//we find a candidate's P_Hat is lower than that of the original rule
+			
+			if ( p_hat < this._baseRP._PHat - GILPSettings.EPSILON){
+				break;
+			}
+			
+			//next, we construct a new rule and check its HC
+			//TODO
+			//now we calc. HC for each constant atom separately, which can be combined in a single SQL
+			RDFPredicate new_tp = tp.clone();
+				
+			if (!a.equals("--variable--")){
+				if (tp.getSubject().equals(fresh_vars.get(0)))
+	 				new_tp.setSubject(a); 				
+	 			else if (tp.getObject().equals(fresh_vars.get(0)))
+	 				new_tp.setObject(a);	
+			}
+			
+			RDFRuleImpl new_r = this._baseRP.getRule().clone();
+			new_r.get_body().addPredicate(new_tp);
+			ExpRulePackage new_rp = new ExpRulePackage(new_r, this._baseRP, p_hat, n_hat);
+			
+			int numHC = qe.getHeadCoverageSize(new_r); 
+			if (numHC>GILPSettings.MINIMUM_HC){
+				listRlts.add(new_rp);
 			}
 		} 
-		
-		
-		return tau;
+		return listRlts;
 	}	
 	
-	private double addCandidate(PriorityQueue<ExpRulePackage> candidates, double tau, RDFPredicate new_tp, double p_hat, double n_hat){
+
+	/*	private double addCandidate(PriorityQueue<ExpRulePackage> candidates, double tau, RDFPredicate new_tp, double p_hat, double n_hat){
 		RDFRuleImpl new_r = this._baseRP.getRule().clone();
 		new_r.get_body().addPredicate(new_tp);
 		ExpRulePackage new_rp = new ExpRulePackage(new_r, this._baseRP, p_hat, n_hat);
 		candidates.add(new_rp);
 		tau = updateCandidates(candidates);
 		return tau;
-	}
+	}*/
 	
 	//input table
 	/*
@@ -303,7 +298,7 @@ public class FeatureConstructor {
 	}
 	
 	//calculate and return the k^th highest quality score and remove all candidates with scores lower than the computed threshold
-	private double updateCandidates(PriorityQueue<ExpRulePackage> candidates){
+	/*private double updateCandidates(PriorityQueue<ExpRulePackage> candidates){
 		//the rule at the head is the least one
 		double tau = 0;
 		if (candidates.size()<= this._k)
@@ -314,7 +309,7 @@ public class FeatureConstructor {
 		}
 		tau = candidates.peek().getQuality();
 		return tau;
-	}
+	}*/
 	  
  
 	public static void main(String[] args) {

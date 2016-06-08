@@ -68,6 +68,38 @@ public class Simulator {
 		
 		return listRemained;		
 	}
+	
+	void simulate_twoPhases(){
+		int num_comments = 5; //number of initial comments 
+		int k = 1;//top-k best rules
+		
+		//FeedbackGenerator fb_gen = new FeedbackGenerator(); 
+		FBGeneratorFromFacts fb_gen = new FBGeneratorFromFacts();
+		 	
+		Feedback fb = fb_gen.getRandomComments(num_comments);
+
+		RDFBFSLearner learner = null; 		
+		
+		ArrayList<RulePackage> candi_rules = new ArrayList<>();  
+		
+		learner = new RDFBFSLearner(fb, k);
+		 
+		candi_rules = learner.learn_rule(candi_rules);
+		
+		//1st phase: expand rule
+		int len = 1;
+		while (len < GILPSettings.MAXIMUM_RULE_LENGTH){
+			ArrayList<RulePackage> working_list = null;
+				//all rules in candi_rules whose length equal to len
+			for (RulePackage rp : working_list){
+				//get rp's child and put into candi_list				
+			}
+			len++;
+		}
+		
+		//2nd phase: BP of feedbacks 
+		
+	}
  
 	void simulate(){
 		int num_comments = 5; //number of initial comments 

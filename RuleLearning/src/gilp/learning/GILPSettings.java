@@ -45,6 +45,8 @@ public class GILPSettings {
 	
 	public static int MAX_NUM_FEEDBACK = 1;
 	
+	public static int MINIMUM_HC = 20;
+	
 	public static double LAMBDA;
 		//the parameter to trade-off between support scores of DB and feedback 
 	
