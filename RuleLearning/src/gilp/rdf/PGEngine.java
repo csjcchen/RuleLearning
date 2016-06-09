@@ -179,6 +179,103 @@ public class PGEngine implements QueryEngine {
 	
  		return sel + from + where;
 	}
+	
+	boolean isTripleCovered(Triple t, RDFRuleImpl r){
+		RDFPredicate head = (RDFPredicate) r.get_head();
+		String head_relation = head.mapToOriginalPred().getPredicateName();
+		head_relation = head_relation + "_1";// the relations will be renamed in
+												// the buildSQL
+		String sel = "SELECT  count(*) ";
+		
+		if(containRDFType(r.get_body())){
+			for(int i=0;i<GILPSettings.NUM_RDFTYPE_PARTITIONS;i++){
+				String newPred = "rdftype" + i; 
+				Clause convertedCls = replaceRDFType(r.get_body(), newPred);
+				String sql = this.buildSQL(convertedCls);
+				sql =  sql.substring(sql.indexOf("from"));		
+				sql = sel + sql;
+				sql += " and " + head_relation + ".S='" + t._subject + "'";
+				sql += " and " + head_relation + ".O='" + t._obj + "'";
+				
+				String rlt = DBController.getSingleValue(sql); 
+				int num = Integer.parseInt(rlt); 
+				if (num>0)
+					return true;				
+			}
+			return false; 
+		}
+		else{
+			String sql = this.buildSQL(r.get_body());
+			sql =  sql.substring(sql.indexOf("from"));		
+			sql = sel + sql;				
+			sql += " and " + head_relation + ".S='" + t._subject + "'";
+			sql += " and " + head_relation + ".O='" + t._obj + "'";
+			
+			String rlt = DBController.getSingleValue(sql); 
+			int num = Integer.parseInt(rlt); 
+			if (num>0)
+				return true;	
+			else
+				return false;
+		}
+		
+	}
+	
+	//return HC(r1)\cap HC(r2) / HC(r1)  
+	double getHCContainedPr(RDFRuleImpl r1, RDFRuleImpl r2){
+		int num = 1000; // # of tuples sampled from both HC
+		
+		ArrayList<Triple> listHC1 = getHeadCoverage(r1, num); 
+		
+		if(listHC1.size()==0)
+			return 0; 
+
+		int overlap = 0;
+		for(Triple t: listHC1){
+			if(isTripleCovered(t, r2)){
+				overlap++;
+			}
+		}
+		
+		double d0 = (double)overlap / (double)listHC1.size();
+		
+		return d0;
+		
+		/*
+		ArrayList<Triple> listHC2 = getHeadCoverage(r2, num); 
+		
+		int min_num = Math.min(listHC1.size(), listHC2.size());
+		
+		if (min_num ==0 ){
+			return new double[]{0.0, 0.0}; 
+		}
+		
+		int max_num = Math.max(listHC1.size(), listHC2.size());
+		if (min_num < num){
+			for (int i=max_num-1;i>=min_num; i--){
+				if(listHC1.size()>i){
+					listHC1.remove(i);
+				}
+				if(listHC2.size()>i){
+					listHC2.remove(i);
+				}
+			}
+		}
+		
+		HashMap<String, String> hmapTriples = new HashMap<>(); 
+		for (int i=0; i<listHC1.size();i++){
+			hmapTriples.put(listHC1.get(i).toString(), "");
+		}
+		
+		
+		for (int i=0; i<listHC2.size();i++){
+			if(hmapTriples.containsKey(listHC2.get(i).toString())){
+				overlap ++;
+			}
+		}
+		*/
+
+	}
 
 	//compute and return the head coverage of the input rule
 	//@n the number of returned triples 
@@ -256,8 +353,7 @@ public class PGEngine implements QueryEngine {
 		
 		//RDFSubGraphSet sg_set = doQuery(cls, sql);
 		
-		//TODO Now we do not consider the partitioned tables of rdf:type, since rdftype does not appear in the head
-		
+		 	
 		
 		//return null;
 	}
@@ -752,35 +848,65 @@ public class PGEngine implements QueryEngine {
 	//###############################################################################
 	
 	static void testHeadCoverage(){
-		Clause cls = new ClauseSimpleImpl();
+		Clause cls1 = new ClauseSimpleImpl();
 		RDFPredicate tp = new RDFPredicate();
 		tp.setSubject(new String("?s"));
 		tp.setPredicateName("hasGivenName");
 		tp.setObject(new String("?o"));
-		cls.addPredicate(tp);
+		cls1.addPredicate(tp);
 	 
 		tp = new RDFPredicate();
 		tp.setSubject(new String("?s"));
 		tp.setPredicateName("rdftype");
 		tp.setObject(new String("wikicat_Chinese_people"));		
-		cls.addPredicate(tp);
+		cls1.addPredicate(tp);
 		
-		RDFRuleImpl r = new RDFRuleImpl();
-		r.set_body(cls);
+		RDFRuleImpl r1 = new RDFRuleImpl();
+		r1.set_body(cls1);
 		tp = new RDFPredicate();		
 		tp.setSubject(new String("?s"));
 		tp.setPredicateName("hasGivenName");
 		tp.setObject(new String("?o"));
 		tp = tp.mapToIncorrectPred();
-		r.set_head(tp);
+		r1.set_head(tp);
 		
 		PGEngine pg = new PGEngine();
-		ArrayList<Triple> triples = pg.getHeadCoverage(r, 10);
+		ArrayList<Triple> triples = pg.getHeadCoverage(r1, 10);
 		for (Triple t:triples){
 			System.out.println(t);
 		}
-		if(pg.isLargerThanMinHC(r))
+		if(pg.isLargerThanMinHC(r1))
 			System.out.println("HC is large enough");
+		
+		
+		Clause cls2 = new ClauseSimpleImpl();
+		tp = new RDFPredicate();
+		tp.setSubject(new String("?s"));
+		tp.setPredicateName("hasGivenName");
+		tp.setObject(new String("?o"));
+		cls2.addPredicate(tp);
+	 
+		tp = new RDFPredicate();
+		tp.setSubject(new String("?s"));
+		tp.setPredicateName("rdftype");
+		tp.setObject(new String("wordnet_person_100007846"));		
+		cls2.addPredicate(tp);
+		
+		RDFRuleImpl r2 = new RDFRuleImpl();
+		r2.set_body(cls2);
+		tp = new RDFPredicate();		
+		tp.setSubject(new String("?s"));
+		tp.setPredicateName("hasGivenName");
+		tp.setObject(new String("?o"));
+		tp = tp.mapToIncorrectPred();
+		r2.set_head(tp);
+		
+		double containedPr= pg.getHCContainedPr(r1, r2); 
+		System.out.println("r1/r2: " + containedPr);
+		
+		containedPr= pg.getHCContainedPr(r2, r1); 
+		System.out.println("r2/r1: " + containedPr);
+		
 	}
 	
 	static void testSimpleQuery(){

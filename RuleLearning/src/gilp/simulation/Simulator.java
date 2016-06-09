@@ -80,6 +80,9 @@ public class Simulator {
 		 	
 		Feedback fb = fb_gen.getRandomComments(num_comments);
 
+		Feedback initial_fb = new Feedback(); 
+		initial_fb.get_comments().addAll(fb.get_comments()); 
+		
 		RDFBFSLearner learner = null; 		
 		
 		ArrayList<RulePackage> candi_rules = new ArrayList<>();  
@@ -102,7 +105,7 @@ public class Simulator {
 				//we do not need to expand a rule if it can be accepted
 				if (c<=0){
 					//get rp's child and put into candi_list		
-					FeatureConstructor f_c = new FeatureConstructor( rp); 
+					FeatureConstructor f_c = new FeatureConstructor(rp, initial_fb, 0); 
 					ArrayList<ExpRulePackage> expanded_rules = f_c.constructFeatures();
 					
 					//each child will inherit the feedbacks of its parent	

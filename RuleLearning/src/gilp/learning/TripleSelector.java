@@ -99,7 +99,7 @@ public class TripleSelector {
 		//TODO need to make k a global setting
 		RDFRuleImpl rdf_r = rp.getRule();
 		
-		FeatureConstructor f_c = new FeatureConstructor( rp); 
+		FeatureConstructor f_c = new FeatureConstructor( rp, null, 0); 
 		ArrayList<ExpRulePackage> candi_rules = f_c.constructFeatures();
 			//try to extend/specialize the rule with data stored in the KB
 		/*if (GILPSettings.IS_DEBUG){

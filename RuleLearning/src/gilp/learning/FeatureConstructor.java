@@ -42,15 +42,17 @@ import gilp.utility.NumericalKVPairComparator;
 public class FeatureConstructor {
 	
 	private int _k; 
-	private RulePackage _baseRP; 
-	private double _P;//the number of consistent triples w.r.t _ro and _fb
-	private double _N;//the number of inconsistent triples w.r.t _ro and _fb	
+	private Feedback _F0; //initial feedbacks
+	private double _P0;//p_hat of r0 w.r.t. F0
 	
-	public FeatureConstructor(RulePackage rp){
+	private RulePackage _baseRP;//parent rule 
+		
+	
+	public FeatureConstructor(RulePackage rp, Feedback initial_FB, double p0){
 		//this._k = k;	
 		this._baseRP = rp;
-		this._P = this._baseRP.getPHat(); 
-		this._N = this._baseRP.getNHat();
+		this._F0 = initial_FB;
+		this._P0 = p0;
 	}
 	 
 	/*
@@ -182,7 +184,8 @@ public class FeatureConstructor {
 			//we check P_Hat first. Since all P_Hat are sorted in descending order, we can stop  if
 			//we find a candidate's P_Hat is lower than that of the original rule
 			
-			if ( p_hat < this._baseRP._PHat - GILPSettings.EPSILON){
+			//TODO actually p_hat is not p_hat(r, F0), we may fix this later
+			if ( p_hat < this._P0 - GILPSettings.EPSILON){
 				break;
 			}
 			
@@ -359,7 +362,7 @@ public class FeatureConstructor {
 		r.set_body(cls);
 		RulePackage rp = new RulePackage(r, fb, null);
 		
-		FeatureConstructor fc = new FeatureConstructor(rp);
+		FeatureConstructor fc = new FeatureConstructor(rp, fb, rp.getPHat());
 		
 		ArrayList<ExpRulePackage> list_candi_rules = fc.constructFeatures(); 			
 	
