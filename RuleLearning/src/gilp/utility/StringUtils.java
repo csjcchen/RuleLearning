@@ -3,6 +3,16 @@ package gilp.utility;
 import java.util.StringTokenizer;
 
 public class StringUtils {
+	
+	public static boolean isNumeric(String str){
+		try{
+			Double.parseDouble(str);
+		}
+		catch (Exception ex){
+			return false;
+		}
+		return true;
+	}
 
 	/*remove the < and > in the input strings
 	 * CJC, Nov. 18, 2015

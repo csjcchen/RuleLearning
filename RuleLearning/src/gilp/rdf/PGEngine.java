@@ -347,7 +347,7 @@ public class PGEngine implements QueryEngine {
 			String sql = this.buildSQL(r.get_body());
 			sql =  sql.substring(sql.indexOf("from"));		
 			sql = sel + sql;				
-			sql += " order by random() ";
+			//sql += " order by random() ";
 			sql += "  limit " + n; 
 			Clause cls = new ClauseSimpleImpl();
 			cls.addPredicate(head.mapToOriginalPred());
@@ -373,6 +373,10 @@ public class PGEngine implements QueryEngine {
 	
 	//compute and return the size of head coverage of the input rule
 	public boolean isLargerThanMinHC(RDFRuleImpl r){
+		//close this check due to efficiency problem
+		int a = 1;
+		if (a == 1)
+			return true;
 		
 		/*basically the main steps are to build SQL
 		 * use the body to generate a SQL
@@ -539,15 +543,26 @@ public class PGEngine implements QueryEngine {
 		RDFRuleImpl r1 = r0.clone();
 		r1.get_body().addPredicate(tp);
 		
-		sql = buildSQL(r1.get_body());
-		
 		RDFPredicate head = (RDFPredicate) r1.get_head();
 		String head_relation = head.mapToOriginalPred().getPredicateName();
 		
+		Iterator<Predicate> myIter = r1.get_body().getIterator();
+		while(myIter.hasNext()){
+			Predicate p = myIter.next();
+			if (p.getPredicateName().equals(head_relation)){
+				p.setPredicateName(temp_table);
+				break;
+			}
+		}
+		
+		sql = buildSQL(r1.get_body());
+		
+		
+		
 		//need to handle the case : hasGivenName(?s1,?o1),rdfslabel(?s2,?o1),hasGivenName(?s4,?o1)->incorrect_hasGivenName(?s1,?o1)
 		//Step 3. replace the 'head' table in SQL by temp table
-		sql = sql.replaceAll(head_relation + "_1", temp_table + "_1");
-		sql = sql.replaceFirst(head_relation, temp_table);
+		//sql = sql.replaceAll(head_relation + "_1", temp_table + "_1");
+		//sql = sql.replaceFirst(head_relation, temp_table);
 		//head_relation = head_relation + "_1";// the relations will be renamed in the buildSQL
 		//sql = sql.replaceAll(head_relation, temp_table);
 		

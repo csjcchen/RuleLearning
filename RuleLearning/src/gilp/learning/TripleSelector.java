@@ -142,7 +142,7 @@ public class TripleSelector {
 		RDFRuleImpl r = rp.getRule();
 		
 		//try to get at most 3*n triples to be used for sampling
-		ArrayList<Triple> listTriples = qe.getHeadCoverage(r, 3*n);
+		ArrayList<Triple> listTriples = qe.getHeadCoverage(r, 10*n);
 		
 		int s = listTriples.size(); 
 		int[] isChosen = new int[s];

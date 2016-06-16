@@ -32,6 +32,7 @@ import gilp.utility.KVComparatorWRTValue;
 import gilp.utility.KVPair;
 import gilp.utility.NumericFeatureTools;
 import gilp.utility.NumericalKVPairComparator;
+import gilp.utility.StringUtils;
 
 
 /*
@@ -71,22 +72,40 @@ public class FeatureConstructor {
 				//Now, just ignore this!!!			
 			//}			
 			for (String pr_name : pred_names){		
-			 	
+			 	if(pr_name.indexOf("rdftype")>=0 && r0.containPredicate("rdftype")){
+			 		//TODO close this expansion now. Two inefficient to joint between two rdftype tables
+			 		continue;
+			 	}
 				//introduce a new variable in the subject
 				String var =  r0.getNextSubjectVar(false);
 				RDFPredicate tp = new RDFPredicate(); 
 				tp.setPredicateName(pr_name);
 				tp.setSubject(var);
-				tp.setObject(U);//object is shared with r0					
-				listRlts.addAll(expand(tp)); 
-				
+				tp.setObject(U);//object is shared with r0
+				boolean validExpansion = true;
+				if (!U.startsWith("?")){
+					//avoid the cases like hasArea(?s, USA)
+					if (tp.isObjectNumeric() && !StringUtils.isNumeric(U)){						
+						validExpansion = false; 
+					}	
+				}
+				if(validExpansion)
+					listRlts.addAll(expand(tp));
+					
 				//introduce a new variable in the object
 				var =  r0.getNextObjectVar(false);
 				tp = new RDFPredicate(); 
 				tp.setPredicateName(pr_name);
 				tp.setSubject(U);//subject is shared with r0
 				tp.setObject(var);
-				listRlts.addAll(expand(tp)); 	
+				validExpansion = true;
+				if(!U.startsWith("?")){
+					if(tp.isSubjectVariable() && !StringUtils.isNumeric(U)){
+						validExpansion = false;
+					}
+				}
+				if(validExpansion )
+					listRlts.addAll(expand(tp)); 	
 			}
 		}		
 		
