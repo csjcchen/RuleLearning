@@ -141,8 +141,8 @@ public class TripleSelector {
 		
 		RDFRuleImpl r = rp.getRule();
 		
-		//try to get at most 10*n triples to be used for sampling
-		ArrayList<Triple> listTriples = qe.getHeadCoverage(r, 10*n);
+		//try to get at most 3*n triples to be used for sampling
+		ArrayList<Triple> listTriples = qe.getHeadCoverage(r, 3*n);
 		
 		int s = listTriples.size(); 
 		int[] isChosen = new int[s];
@@ -215,9 +215,12 @@ public class TripleSelector {
 	//calc the minimum number of feedbacks which may make the rule classified
 	//if the total num of feedbacks exceeds the global setting MAX_NUM_FB, return 0;
 	private int calcMinimumRequiredNum(RulePackage rp){
+		rp.calcPN_Hats();
+		
 		int p0 = (int)rp.getPHat();
 		int n0 = (int)rp.getNHat();
 		int p = p0, n= n0; 
+		
 		
 		//assume the new fbs are all negative 
 		while(p+n<=GILPSettings.MAX_NUM_FEEDBACK){
@@ -243,11 +246,23 @@ public class TripleSelector {
 	}
 	
 	boolean canAccept(int p, int n){
-		return false;
+		double prec = (double)p/(double)(p+n);
+		
+		double l = calcWilsonInterval(prec, p+n)[0]; 
+		if (l>GILPSettings.PRECISION_THRESHOLD)
+			return true;
+		else 
+			return false;
 	}
 	
 	boolean canReject(int p, int n){
-		return false;		
+		double prec = (double)p/(double)(p+n);
+		
+		double h = calcWilsonInterval(prec, p + n)[1];
+		if (h<GILPSettings.PRECISION_THRESHOLD)
+			return true;
+		else
+			return false;		
 	}
 	
 	

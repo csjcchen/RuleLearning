@@ -12,6 +12,7 @@ import deletedCodes.ClauseDBAdaptor;
 import gilp.feedback.Comment;
 import gilp.feedback.Feedback;
 import gilp.learning.GILPSettings;
+import gilp.rdf.JoinType;
 import gilp.rdf.PGEngine;
 import gilp.rdf.QueryEngine;
 import gilp.rdf.RDF3XEngine;
@@ -128,6 +129,21 @@ public class RDFRuleImpl extends Rule {
 			this._body.removePredicate(p);
 		}
 	}
+	
+	//check whether a comment is covered by this rule
+	//return 1: true positive; -1: false positive; 0: not covered
+	public int coversComment(Comment cmt){
+		Triple t = cmt.get_triple();
+		PGEngine qe = new PGEngine();
+		if (qe.isTripleCovered(t, this)){
+			if(cmt.get_decision() == this.isInclusive()){
+				return 1;
+			}
+			else
+				return -1;
+		}
+		return 0;
+	}
 	 
 	//normalize this rule by
 	//1. order all atoms by the alphabet order of their predicate names
@@ -226,6 +242,18 @@ public class RDFRuleImpl extends Rule {
 		return listRlt;
 	}
 	
+	//find joinType between this rule and a predicate	
+	public JoinType[] findJoinType(RDFPredicate tp){
+		Iterator<Predicate> myIter = this._body.getIterator();
+		while(myIter.hasNext()){
+			RDFPredicate p =(RDFPredicate) myIter.next();
+			JoinType[] jts = RDFPredicate.getJoinTypes(p, tp);
+			if(jts!=null)
+				return jts;
+		}
+		return null;
+	}
+	
 	//get all arguments(variables or constants) contained in this rule
 	public ArrayList<String> getArguments(){
 		HashMap<String,String> hmapArguments = new HashMap<>();
@@ -305,6 +333,29 @@ public class RDFRuleImpl extends Rule {
 		}
 		return true;
 	}
+	
+	//check whether this rules is a specialization of @r
+	public boolean isSpecialization(RDFRuleImpl r){
+		//idea: first normalize the rules and then compare by string
+		
+		RDFRuleImpl r1 = this.clone(); 
+		r1.normalize();
+		RDFRuleImpl r2 = r.clone();
+		r2.normalize();
+		
+		if (!r1.get_head().toString().equals(r2.get_head().toString())){
+			return false;
+		}
+		
+		if (r1.get_body().toString().indexOf(r2.get_body().toString())>=0)
+			return true;
+		else
+			return false;
+	}
+	
+	public boolean isGeneralization(RDFRuleImpl r){
+		return r.isSpecialization(this);
+	}
 	 
 	//****************************************************************************
 		
@@ -330,6 +381,29 @@ public class RDFRuleImpl extends Rule {
 		System.out.println("after removing subsumed predicates:");
 		r.removeSubsumedPredicates();
 		System.out.println(r);
+	}
+	
+	static void testSpecialization(){
+		RDFRuleImpl r1 = new RDFRuleImpl();
+		RDFPredicate h = new RDFPredicate("?s1","hasGivenName", "?o1");
+		h = h.mapToCorrectPred();
+		r1.set_head(h);
+		
+		RDFPredicate p = new RDFPredicate("?o1","hasGivenName", "?s1");
+		r1.get_body().addPredicate(p);
+		p = new RDFPredicate("?s1","hasGivenName", "?s1");
+		r1.get_body().addPredicate(p);
+		p = new RDFPredicate("?s2","hasNationality", "China");
+		r1.get_body().addPredicate(p);
+		
+		RDFRuleImpl r2 = r1.clone(); 
+		//RDFPredicate h2 = new RDFPredicate("?s1","hasGivenName", "?o1");
+		//h2 = h2.mapToIncorrectPred();
+		//r2.set_head(h2);
+		
+		r2.get_body().addPredicate(new RDFPredicate("?o1","rdfType", "person"));
+		
+		System.out.print(r1.isGeneralization(r2));
 	}
 
 	
@@ -373,7 +447,7 @@ public class RDFRuleImpl extends Rule {
 	}
 	
 	public static void main(String[] args){
-		testRemoveSubsumed();
+		testSpecialization();
 	}
  
 }

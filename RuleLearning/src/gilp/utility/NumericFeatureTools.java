@@ -115,17 +115,22 @@ public class NumericFeatureTools {
 	public static double[] getBounds(String range) {
 
 		double[] bounds = new double[2];
-		String left = range.trim().substring(0, 1);
-		String right = range.trim().substring(range.length() - 1, range.length());
-
-		String low = range.substring(range.indexOf(left) + 1, range.indexOf(","));
-		String high = range.substring(range.indexOf(",") + 1, range.indexOf(right));
-
-		double d_l = Double.parseDouble(low);
-		double d_h = Double.parseDouble(high);
-		bounds[0] = d_l;
-		bounds[1] = d_h;
-		return bounds;
+		try{
+			String left = range.trim().substring(0, 1);
+			String right = range.trim().substring(range.length() - 1, range.length());
+	
+			String low = range.substring(range.indexOf(left) + 1, range.indexOf(","));
+			String high = range.substring(range.indexOf(",") + 1, range.indexOf(right));
+	
+			double d_l = Double.parseDouble(low);
+			double d_h = Double.parseDouble(high);
+			bounds[0] = d_l;
+			bounds[1] = d_h;
+			return bounds;
+		}
+		catch(Exception ex){			
+			return null;
+		}
 	}
 	
 	//e.g. [1, 3, 5] --> [-infinity, 2, 4, infinity]

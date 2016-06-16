@@ -9,6 +9,7 @@ import java.util.StringTokenizer;
 
 import gilp.feedback.Comment;
 import gilp.feedback.Feedback;
+import gilp.rdf.PGEngine;
 import gilp.rdf.QueryEngine;
 import gilp.rdf.RDF3XEngine;
 import gilp.rdf.RDFSubGraph;
@@ -26,13 +27,14 @@ public class RulePackage {
 	RDFRuleImpl _rule = null; 
 	RulePackage _base_RP = null;
 	Feedback _fb = null; 
+	double _P0; //P_Hat of the first generation w.r.t. F0
 	double _PHat; 
 	double _NHat; 
 	double _quality;
 	double _precision;
 	double _fb_support; 
 	double _kb_support; 
-	boolean  _isExtended = false;
+	boolean  _isExtendedRule = false;
 	
 	public RulePackage (RDFRuleImpl r, Feedback fb, RulePackage baseRP){
 		this._rule = r;
@@ -77,9 +79,18 @@ public class RulePackage {
 		this._precision = -1;
 		this._kb_support = -1; 
 		this._fb_support = -1;
+		this._P0 = -1;
 	}
 	
 		
+	public double getP0() {
+		return _P0;
+	}
+
+	public void setP0(double P0) {
+		this._P0 = P0;
+	}
+
 	public double getQuality() {
 		if (this._quality<0)
 			this.calc_quality();		
@@ -225,6 +236,22 @@ public class RulePackage {
 	
 	// calculate the P_Hat and N_Hat 
 	void calcPN_Hats() {
+		if (this.isExtended()){
+			this._PHat = 0;
+			this._NHat = 0;
+			for (Comment cmt: this._fb.get_comments()){
+				int flag = this._rule.coversComment(cmt);
+				if (flag > 0){
+					this._PHat += 1.0;
+				}
+				else if(flag < 0){
+					this._NHat += 1.0;
+				}
+				
+			}
+			return;
+		}
+		
 		double[] pn = new double[2];
 		pn[0] = pn[1] = 0;
 
@@ -259,11 +286,11 @@ public class RulePackage {
 	}
 	
 	public boolean isExtended(){
-		return this._isExtended;
+		return this._isExtendedRule;
 	}
 	
 	public void setExtended(boolean val){
-		this._isExtended = val;
+		this._isExtendedRule = val;
 	}
 	
 	@Override

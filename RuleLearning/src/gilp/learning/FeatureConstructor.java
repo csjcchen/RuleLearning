@@ -171,10 +171,7 @@ public class FeatureConstructor {
 			generateHistograms(listPHats, hmapNHats);
 		}
 		
-		if (listPHats.size()>1){
-			int a = 1;
-		}
-		
+		 
 		for (KVPair<String, Integer> kv: listPHats){			
 			String a = kv.get_key();
 			double p_hat = (double)kv.get_value();
@@ -184,7 +181,7 @@ public class FeatureConstructor {
 			//we check P_Hat first. Since all P_Hat are sorted in descending order, we can stop  if
 			//we find a candidate's P_Hat is lower than that of the original rule
 			
-			//TODO actually p_hat is not p_hat(r, F0), we may fix this later
+			//TODO actually p_hat an upper bound of p_hat(r, F0), we may fix this later
 			if ( p_hat < this._P0 - GILPSettings.EPSILON){
 				break;
 			}

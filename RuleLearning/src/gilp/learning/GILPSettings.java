@@ -45,6 +45,8 @@ public class GILPSettings {
 	
 	public static int MAX_NUM_FEEDBACK = 1;
 	
+	public static double PRECISION_THRESHOLD = 0.7; 
+	
 	public static int MINIMUM_HC = 20;
 	
 	public static double LAMBDA;

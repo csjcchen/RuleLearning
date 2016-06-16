@@ -180,7 +180,7 @@ public class PGEngine implements QueryEngine {
  		return sel + from + where;
 	}
 	
-	boolean isTripleCovered(Triple t, RDFRuleImpl r){
+	public boolean isTripleCovered(Triple t, RDFRuleImpl r){
 		RDFPredicate head = (RDFPredicate) r.get_head();
 		String head_relation = head.mapToOriginalPred().getPredicateName();
 		head_relation = head_relation + "_1";// the relations will be renamed in
@@ -194,7 +194,13 @@ public class PGEngine implements QueryEngine {
 				String sql = this.buildSQL(convertedCls);
 				sql =  sql.substring(sql.indexOf("from"));		
 				sql = sel + sql;
-				sql += " and " + head_relation + ".S='" + t._subject + "'";
+				if (sql.indexOf("where")>=0){
+					sql += " and ";
+				}
+				else{
+					sql += " where ";
+				}
+				sql += head_relation + ".S='" + t._subject + "'";
 				sql += " and " + head_relation + ".O='" + t._obj + "'";
 				
 				String rlt = DBController.getSingleValue(sql); 
@@ -207,8 +213,14 @@ public class PGEngine implements QueryEngine {
 		else{
 			String sql = this.buildSQL(r.get_body());
 			sql =  sql.substring(sql.indexOf("from"));		
-			sql = sel + sql;				
-			sql += " and " + head_relation + ".S='" + t._subject + "'";
+			sql = sel + sql;	
+			if (sql.indexOf("where")>=0){
+				sql += " and ";
+			}
+			else{
+				sql += " where ";
+			}
+			sql +=  head_relation + ".S='" + t._subject + "'";
 			sql += " and " + head_relation + ".O='" + t._obj + "'";
 			
 			String rlt = DBController.getSingleValue(sql); 
@@ -223,7 +235,7 @@ public class PGEngine implements QueryEngine {
 	
 	//return HC(r1)\cap HC(r2) / HC(r1)  
 	double getHCContainedPr(RDFRuleImpl r1, RDFRuleImpl r2){
-		int num = 1000; // # of tuples sampled from both HC
+		int num = 200; // # of tuples sampled from both HC
 		
 		ArrayList<Triple> listHC1 = getHeadCoverage(r1, num); 
 		
@@ -276,6 +288,7 @@ public class PGEngine implements QueryEngine {
 		*/
 
 	}
+	
 
 	//compute and return the head coverage of the input rule
 	//@n the number of returned triples 
@@ -295,7 +308,7 @@ public class PGEngine implements QueryEngine {
 				String sql = this.buildSQL(convertedCls);
 				sql =  sql.substring(sql.indexOf("from"));		
 				sql = sel + sql;				
-				sql += " order by random() ";
+				//sql += " order by random() ";//remove this condition to get efficiency
 				sql += "  limit " + n; 
 				
 				Clause cls = new ClauseSimpleImpl();
@@ -436,6 +449,154 @@ public class PGEngine implements QueryEngine {
 		
 		return (num>=GILPSettings.MINIMUM_HC);
 	}
+	
+	private String constructStrAgg(RDFRuleImpl r, RDFPredicate tp){
+		String aggregate_att = tp.getPredicateName() + "_1."; 		
+		JoinType[] jts = r.findJoinType(tp); 
+		String joinedPositionInTP = "S";
+		if(jts != null){
+			if (jts[0] == JoinType.OO || jts[0] == JoinType.SO){
+				joinedPositionInTP = "O";
+			}
+		}
+		else{
+			GILPSettings.log(this.getClass().getName() + " cannot find matched joins.");
+			return null;
+		}
+		if (joinedPositionInTP=="S"){
+			if (tp.isObjectNumeric())
+				aggregate_att += "num_o";
+			else
+				aggregate_att += "O";
+		}
+		else
+			aggregate_att += "S";
+		return aggregate_att;
+	}
+	
+	private boolean getPHatForExpandedRule(RulePackage rp, RDFPredicate tp, ArrayList<KVPair<String, Integer>> listPHats, HashMap<String,Integer> hmapNHats){
+		//Step 1. Create temple table, store the true positives in current feedbacks
+		//Step 2. build the expanded rule and build a SQL for it
+		//Step 3. replace the 'head' table in SQL by temp table
+		//Step 4. construct the select and aggreate part of SQL 
+		/*Example 
+		 * r0 :   hasGivenName(X, Y) AND wasLivenIn(X, Shanghai) --> incorrect_hasGivenName(X, Y)
+		 * tp:  rdftype(X, Z) 
+		 * head table is : hasGivenName
+		 * create table  temp_triples_by_rule
+		 * insert all true positives of r0 inside rp.fb 
+		 * build the expanded rule and the corresponding SQL 
+		 * select * from hasGivenName_1, wasLivenIn_1,  rdftype_1 where hasGivenName_1.s=wasLivenIn_1.s
+		 * and hasGivenName_1.s = rdftype_1.s
+		 * replace all hasGivenName_1 by temp_triples_by_rule
+		 * select * from temp_triples_by_rule, wasLivenIn_1,  rdftype_1 where temp_triples_by_rule.s=wasLivenIn_1.s
+		 * and temp_triples_by_rule.s = rdftype_1.s
+		 * construct the select and aggreate part of SQL 
+		 * select rdftype.O, count(temp_triples_by_rule.*) as PHat from temp_triples_by_rule, wasLivenIn_1,  rdftype_1 where temp_triples_by_rule.s=wasLivenIn_1.s
+		 * and temp_triples_by_rule.s = rdftype_1.s
+		 * group by rdftype.O
+		 * 
+		 * */
+		Feedback fb = rp.getFeedback();
+		RDFRuleImpl r0 = rp.getRule();
+		
+		String temp_table = "temp_triples_by_rule";
+		//1. build the temporary table 
+		String sql = "DROP Table IF EXISTS " + temp_table;
+		if (!DBController.exec_update(sql)){
+			GILPSettings.log(this.getClass().getName() + " there is error when dropping table " + temp_table + ".");
+			return false;
+		}
+		
+		sql = "create table " + temp_table + "(";		
+		sql += "S character varying(1024),"; 
+		sql += "O character varying(1024)"; 
+		sql += ")"; 
+		
+		if (!DBController.exec_update(sql)){
+			GILPSettings.log(this.getClass().getName() + " there is error when creating table " + temp_table );
+			return false;
+		}
+		
+		for(Comment cmt : rp.getFeedback().get_comments()){
+			if (r0.coversComment(cmt)>0){
+				Triple t = cmt.get_triple(); 
+				sql = "insert into " + temp_table + " values("; 
+				sql += "'" + t.get_subject() + "', '" + t.get_obj() + "' "; 
+				sql += ")"; 
+				
+				//System.out.println(sql);
+				
+				if (!DBController.exec_update(sql)){
+					GILPSettings.log(this.getClass().getName() + " there is error when inserting tuples into table consistent.");
+					return false;
+				}	
+			}
+		}
+		
+		//Step 2. build the expanded rule and build a SQL for it
+		
+		RDFRuleImpl r1 = r0.clone();
+		r1.get_body().addPredicate(tp);
+		
+		sql = buildSQL(r1.get_body());
+		
+		RDFPredicate head = (RDFPredicate) r1.get_head();
+		String head_relation = head.mapToOriginalPred().getPredicateName();
+		
+		//need to handle the case : hasGivenName(?s1,?o1),rdfslabel(?s2,?o1),hasGivenName(?s4,?o1)->incorrect_hasGivenName(?s1,?o1)
+		//Step 3. replace the 'head' table in SQL by temp table
+		sql = sql.replaceAll(head_relation + "_1", temp_table + "_1");
+		sql = sql.replaceFirst(head_relation, temp_table);
+		//head_relation = head_relation + "_1";// the relations will be renamed in the buildSQL
+		//sql = sql.replaceAll(head_relation, temp_table);
+		
+		
+		
+		//Step 4. construct the select and aggreate part of SQL 
+		String sel = "select  count( distinct " + temp_table + "_1.*) as pHat "; 
+		sql = sql.substring(sql.indexOf("from")); 
+		sql = sel + sql; 		
+		
+		//compute p_hats and n_hats for variable atom
+		ArrayList<ArrayList<String>> listTuples = DBController.getTuples(sql);
+		if (listTuples == null)
+			return true;
+		
+		ArrayList<String> tuple = listTuples.get(0);
+		int p_hat = Integer.parseInt(tuple.get(0));
+		int n_hat = 0;
+		listPHats.add(new KVPair<String, Integer>("--variable--", p_hat)); 
+		hmapNHats.put("--variable--", n_hat);
+		
+		//compute p_hats and n_hats for constant atoms
+		String aggregate_att = constructStrAgg(r0, tp);
+		if (aggregate_att==null){
+			GILPSettings.log(this.getClass().getName() + " cannot find matched joins.");
+			return false;
+		}
+		sel = sel.replaceFirst("select", "select " + aggregate_att + " , "); 
+		sql = sql.substring(sql.indexOf("from")); 
+		sql = sel + sql; 
+		String agg = " group by " + aggregate_att; 
+		sql = sql + agg; 		
+		sql += " order by pHat desc";
+		
+		listTuples = DBController.getTuples(sql);
+		if (listTuples == null)
+			return true;
+		
+		//constant, PHat, COV
+		for(ArrayList<String> tuple1: listTuples){
+			String val = tuple1.get(0);
+			p_hat = Integer.parseInt(tuple1.get(1));
+			n_hat = 0;
+			listPHats.add(new KVPair<String, Integer>(val, p_hat)); 
+			hmapNHats.put(val, n_hat);
+		}
+				
+		return true;
+	}
 	 
 	//Find the P_Hats (true positives) and and NHats (false positive) for a rule which is obtained by expanding @ro with @tp
 	//One argument  of @tp must be shared with @r0, and the other argument, say X, of @tp is a fresh variable.  
@@ -467,6 +628,10 @@ public class PGEngine implements QueryEngine {
 		 * for this case, we need to add a where clause, e.g.  rdftype.S = 'Shanghai' 
 		 * 4. build the result-list based on the returned tuples 
 		 * */
+		if (rp.isExtended()){
+			return this.getPHatForExpandedRule(rp, tp, listPHats, hmapNHats);
+		}
+		
 		Feedback fb = rp.getFeedback();
 		RDFRuleImpl r0 = rp.getRule();
 		
@@ -1011,19 +1176,20 @@ public class PGEngine implements QueryEngine {
 		ArrayList<KVPair<String, Integer>> listPHats = new ArrayList<>(); 
 		HashMap<String, Integer> hmapNHats = new HashMap<>();
 		
-		RulePackage rp = new RulePackage(r0, fb, null); 		
+		RulePackage rp = new RulePackage(r0, fb, null); 
+		rp.setExtended(true);
 		pg.getPHatNhats(rp, ex_tp, listPHats, hmapNHats); 
 		
-		for (KVPair<String, Integer> kv: listPHats){
+		/*for (KVPair<String, Integer> kv: listPHats){
 			String val = kv.get_key();
 			int p_hat = kv.get_value();
 			int n_hat = hmapNHats.get(val);
 			System.out.println(val + "|" + p_hat + "|" + n_hat);
-		}
+		}*/
 	}
 	
 	public static void main(String[] args){
-		testHeadCoverage();		
+		testPNHats();		
 	}
 
 }

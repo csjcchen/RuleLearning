@@ -23,6 +23,7 @@ public class ExpRulePackage extends RulePackage {
 		 super(r, null, baseRP);//set feedback as null
 		 this._PHat = pHat;
 		 this._NHat = nHat;
+		 this._isExtendedRule = true;
 		 init();
 	} 
 	

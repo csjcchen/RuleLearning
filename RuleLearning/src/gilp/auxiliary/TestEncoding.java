@@ -73,7 +73,8 @@ public class TestEncoding {
 	}
 	
 	public static void main(String[] args){
-		readDB();
+		String str = "select from hasGivenName, hasFamilyName";
+		System.out.println(str.replaceFirst("hasFamilyName", "abc"));
 	}
 	
 

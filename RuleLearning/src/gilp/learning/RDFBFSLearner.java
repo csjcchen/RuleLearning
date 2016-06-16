@@ -146,6 +146,11 @@ public class RDFBFSLearner{
 				System.out.println(r);
 			}
 		}
+		
+		for(RulePackage r: results){
+			r.setP0(r.getPHat());
+		}
+		
 	
 		return results;
 	}

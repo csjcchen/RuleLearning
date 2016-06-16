@@ -81,7 +81,7 @@ public class Simulator {
 		Feedback fb = fb_gen.getRandomComments(num_comments);
 
 		Feedback initial_fb = new Feedback(); 
-		initial_fb.get_comments().addAll(fb.get_comments()); 
+		initial_fb.set_comments(fb.get_comments()); 
 		
 		RDFBFSLearner learner = null; 		
 		
@@ -105,12 +105,16 @@ public class Simulator {
 				//we do not need to expand a rule if it can be accepted
 				if (c<=0){
 					//get rp's child and put into candi_list		
-					FeatureConstructor f_c = new FeatureConstructor(rp, initial_fb, 0); 
+					FeatureConstructor f_c = new FeatureConstructor(rp, initial_fb, rp.getP0()); 
 					ArrayList<ExpRulePackage> expanded_rules = f_c.constructFeatures();
 					
 					//each child will inherit the feedbacks of its parent	
 					for (ExpRulePackage exRP: expanded_rules){
-						RulePackage child_rp = new RulePackage(exRP.getRule().clone(), rp.getFeedback(), rp);
+						RDFRuleImpl child_r = exRP.getRule().clone();
+						child_r.normalize();
+						RulePackage child_rp = new RulePackage(child_r, rp.getFeedback(), rp);
+						child_rp.setExtended(true);
+						child_rp.setP0(rp.getP0());
 						candi_rules.add(child_rp);
 					}
 				}				
@@ -122,7 +126,7 @@ public class Simulator {
 	ArrayList<RulePackage> chooseRPByLength(ArrayList<RulePackage> origin_list, int len){
 		ArrayList<RulePackage> listRlts = new ArrayList<>();
 		for (RulePackage rp: origin_list){
-			if(rp.getRule().getLength() == len){
+			if(rp.getRule().get_body().getBodyLength() == len){
 				listRlts.add(rp);
 			}
 		}
@@ -201,7 +205,7 @@ public class Simulator {
 	}
 	
 	public static void main(String[] args){
-		new Simulator().simulate();
+		new Simulator().simulate_twoPhases();
 	}
 
 }
