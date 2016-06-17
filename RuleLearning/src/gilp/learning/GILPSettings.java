@@ -62,6 +62,8 @@ public class GILPSettings {
 		//whether the running is in the debug mode
 	public static double MINIMUM_PRECISION = EPSILON;
 		//minimum requirement for an intermediate rule
+	public static String TEMP_TABLE_F0R0 = "temp_tab_F0R0";
+		//the name of the table storing the join results of initial feedbacks and a rule to be expanded
 	
 	public static int DB_ENGINE; 
 		//1: RDF3X; 2: PostgreSQL; 

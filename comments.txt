@@ -4,8 +4,8 @@ Xi_Jinping hasNationality Chinese 1
 Hu_Jintao hasNationality Chinese 1
 Deng_Xiaoping hasGivenName Deng 0
 Deng_Xiaoping hasFamilyName Deng 1
-Barack_Obama hasGivenName Barack 1
-Barack_Obama hasFamilyName Obama 1
+Barack_Obama hasGivenName Baracks -1
+Barack_Obama hasFamilyName Obama -1
 Xi_Jinping hasGivenName Xi 0
 Xi_Jinping hasFamilyName Xi 1
 Hu_Jintao hasGivenName Hu 0

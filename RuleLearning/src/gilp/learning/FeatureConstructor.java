@@ -63,7 +63,7 @@ public class FeatureConstructor {
 	//table F0AndR0 ( hasGivenName_1_S, hasGivenName_1_O, rdfType_1_S, rdfType_1_O)
 	//the results are F0(hasGivenName(x, y)) join rdfType(x, person)(K)
 	private boolean constructBaseRPTable(){
-		String temp_table = "temp_F0R0";
+		String temp_table = "temp_tab_F0R0";
 		String attr_type = "character varying(1024)";
 		
 		if (!DBController.drop_tab(temp_table)){
@@ -104,14 +104,14 @@ public class FeatureConstructor {
 			
 			for (int j = 0; j<listTriples.size();j++){
 				Triple t = listTriples.get(j);
-				String prop_name = hmapPredNames.get(predicates[j].toString());
+				String prop_name = predicates[j].getPredicateName();
 				if (!prop_name.equalsIgnoreCase(t.get_predicate())){
 					GILPSettings.log(this.getClass().getName() + " Error: the name of predicate is wrong!");
 					return false;
 				}
 				sql += "'" + t.get_subject() + "','" + t.get_obj() + "',"; 
 			}
-			sql = sql.substring(sql.lastIndexOf(",")); //remove the last ','
+			sql = sql.substring(0, sql.lastIndexOf(",")); //remove the last ','
 			sql += ")"; 
 			if (!DBController.exec_update(sql)){
 				GILPSettings.log(this.getClass().getName() + " there is error when inserting a tuple .");
@@ -127,6 +127,9 @@ public class FeatureConstructor {
 	 * rule, and extract frequent patterns from these joined sub-graphs.
 	 */
 	public ArrayList<ExpRulePackage> constructFeatures() {
+		if(this._baseRP.isExtended())
+			this.constructBaseRPTable(); 
+		
 		ArrayList<String> pred_names = GILPSettings.getAllPredicateNames();
 		RDFRuleImpl r0 = this._baseRP.getRule();	
 		ArrayList<String> args = r0.getArguments();

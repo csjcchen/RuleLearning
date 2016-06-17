@@ -478,18 +478,184 @@ public class PGEngine implements QueryEngine {
 		return aggregate_att;
 	}
 	
-	//get the results of @fb join @r.body (KB)
-	//example @fb: hasGivenName (YM, Y), hasFamilyName(YM, M)
+	//get the results of true positives in @fb join @r.body (KB)
+	//example @fb: hasGivenName (YM, Y) incorrect, hasFamilyName(YM, M) incorrect, hasGivenName(BO, B) correct
 	//@r: hasGivenName(?s1, ?o1) and rdfType(?s1, person) -> incorrect_hasGivenName(?s1, ?o1)
 	//@return select t.s, t.o, r.s, r.o
 	//from temp_tab as t, rdfType as r 
 	//where t.s=r.s and r.o='pernson' 
 	//here temp_tab (s, o) stores one tuple hasGivenName (YM, Y)
 	public RDFSubGraphSet getFBJoinRule(Feedback fb, RDFRuleImpl r){
-		return null;
+		//1. create temp_tab (tid, s, o) : the tid attr is not useful, just to be aligned to other predicates
+		//2. store the feedbacks into temp_tab
+		//3. replace the head_predicate in the body by temp_tab
+		//4. do the query and mount the sg-set
+		
+		//1. create temp_tab (tid, s, o) 
+		String temp_table = "temp_FBJoinRule";
+		String attr_type = "character varying(1024)";
+		
+		if(!DBController.drop_tab(temp_table)){
+			GILPSettings.log(this.getClass() + " Error! Cannot drop the table " + temp_table);
+			return null;
+		}
+		
+		String sql  = "create table " + temp_table ; 
+		sql += "(tid int, S " + attr_type + ", O " + attr_type + ")"; 
+		if(!DBController.exec_update(sql)){
+			GILPSettings.log(this.getClass() + " Error! Cannot create the table " + temp_table);
+			return null;
+		}
+		
+		//2. store the feedbacks
+		RDFPredicate head_tp = (RDFPredicate)(r.get_head().clone());
+		String head_name = head_tp.mapToOriginalPred().getPredicateName(); 
+		ArrayList<Comment> listCmts = fb.get_comments(); 
+		for (Comment cmt: listCmts){
+			if(cmt.get_triple().get_predicate().equals(head_name)){
+				if (cmt.get_decision() == r.isInclusive()){
+					sql = "insert into " + temp_table + " values(-1, " ;//-1 is a fake tid
+					sql += "'" + cmt.get_triple()._subject + "','" + cmt.get_triple()._obj + "')"; 
+					if(!DBController.exec_update(sql)){
+						GILPSettings.log(this.getClass() + " Error! Cannot insert a triple " + cmt.get_triple());
+						return null;
+					}	
+				}				
+			}
+		}
+		
+		//3. replace the head_predicate in the body by temp_tab
+		RDFRuleImpl r1 = r.clone();
+		HashMap<String, String> hmapPredNames = r1.getRenamedPredicates();
+		Iterator<Predicate> myIter = r1.get_body().getIterator(); 
+		while(myIter.hasNext()){
+			RDFPredicate tp =  (RDFPredicate) myIter.next(); 
+			String tp_rename = hmapPredNames.get(tp.toString()); 
+			String head_rename = hmapPredNames.get(head_tp.toString()); 
+			if(tp_rename.equals(head_rename)){
+				tp.setPredicateName(temp_table);
+				break; 
+			}
+		}
+		
+		//4. do the query 
+		sql = buildSQL(r1.get_body()); 
+		
+		return doQuery(r.get_body(), sql);
 	}
 	
+	
 	private boolean getPHatForExpandedRule(RulePackage rp, RDFPredicate tp, ArrayList<KVPair<String, Integer>> listPHats, HashMap<String,Integer> hmapNHats){
+		//example:
+		// r0: hasGivenName(x, y) and rdftype(x, China) -> incorrect_hasGivenName(x, y)
+		// tp: livesIn(x, z)
+		//sql: select ex.O,  count(distinct hasGivenName_1_S || '-' ||  hasGivenName_1_O) as pHat
+		//	   from temp_tab_F0G0 as temp, livesIn as ex
+		//	   where hasGivenName_1_S=ex.S
+		//	   group by ex.O 
+		//	   having count(distinct hasGivenName_1_S || '-' ||  hasGivenName_1_O)> rp._P0
+		
+		//step -1. The join results of FB and r0 should be stored in the table GILPSettings.TEMP_TABLE_F0R0
+	
+		RDFRuleImpl r0 = rp.getRule();
+		RDFPredicate head = (RDFPredicate)r0.get_head();
+		HashMap<String, String> hmapPredNames = r0.getRenamedPredicates();
+		String head_rn = hmapPredNames.get(head.toString());
+		
+		String sql_wh = "where "; 
+		String sql_sel = " ";
+		String str_count = ""; 
+		
+		boolean find_join = false;
+		Iterator<Predicate> myIter = r0.get_body().getIterator(); 
+		JoinType[] jts = null;
+		while(myIter.hasNext()){
+			RDFPredicate p = (RDFPredicate) myIter.next(); 
+			String pred_rn = hmapPredNames.get(p.toString());
+			if (!find_join){
+		    	jts = RDFPredicate.getJoinTypes(p, tp);
+				if(jts!=null){					
+					switch(jts[0]){
+					case 
+						SS: sql_wh += pred_rn + "_S=ex.S ";    
+						break; 
+					case 
+						SO: sql_wh += pred_rn + "_S=ex.O ";
+						break;
+					case OS:
+						sql_wh += pred_rn + "_O=ex.S ";
+						break; 
+					case OO:
+						sql_wh += pred_rn + "_O=ex.O ";
+						break;
+					}				
+					find_join = true;
+				}				
+		    }
+			str_count = " count(distinct " + pred_rn + "_S || '-' ||" + pred_rn + "_O)";
+		    if(pred_rn.equals(head_rn)){
+		    	sql_sel += str_count + " as pHat "; 
+		    	if(find_join) 
+		    		break;
+		    }			
+		}
+		
+		/*if (sql_wh.length()<10){
+			System.out.println(r0.toString() + " || " + tp.toString());
+			return getPHatForExpandedRule(rp, tp, listPHats, hmapNHats);
+		}*/
+		
+		if(!find_join){
+			GILPSettings.log(this.getClass() + "cannot find join." + r0.toString() + " || " + tp.toString());
+			return false;
+		}
+		
+		String sql_from = " from " + GILPSettings.TEMP_TABLE_F0R0 + ", " + tp.getPredicateName() + " as ex "; 
+		
+		 
+		//compute p_hats and n_hats for variable atom
+		String sql = "select " + sql_sel + sql_from + sql_wh;
+		System.out.println(sql);
+		ArrayList<ArrayList<String>> listTuples = DBController.getTuples(sql);
+		if (listTuples == null)
+			return true;
+				
+		ArrayList<String> tuple = listTuples.get(0);
+		int p_hat = Integer.parseInt(tuple.get(0));
+		int n_hat = 0;
+		listPHats.add(new KVPair<String, Integer>("--variable--", p_hat)); 
+		hmapNHats.put("--variable--", n_hat);
+		
+		//construct constant atoms
+		
+		String aggregate_att = constructStrAgg(r0, tp);
+		aggregate_att = aggregate_att.substring(aggregate_att.indexOf("."));
+		aggregate_att = "ex" + aggregate_att; 
+		
+		sql_sel = "select " + aggregate_att + ", " + sql_sel; 
+		sql = sql_sel + sql_from + sql_wh; 
+		sql += " group by " + aggregate_att; 
+		sql += " having " + str_count + ">" + (rp.getP0()-0.01); 
+		System.out.println(sql);
+		
+			
+		listTuples = DBController.getTuples(sql);
+		if (listTuples == null)
+			return true;
+		
+		//constant, PHat, COV
+		for(ArrayList<String> tuple1: listTuples){
+			String val = tuple1.get(0);
+			p_hat = Integer.parseInt(tuple1.get(1));
+			n_hat = 0;
+			listPHats.add(new KVPair<String, Integer>(val, p_hat)); 
+			hmapNHats.put(val, n_hat);
+		}
+				
+		return true;
+	}
+	
+	private boolean getPHatForExpandedRule_old(RulePackage rp, RDFPredicate tp, ArrayList<KVPair<String, Integer>> listPHats, HashMap<String,Integer> hmapNHats){
 		//Step 1. Create temple table, store the true positives in current feedbacks
 		//Step 2. build the expanded rule and build a SQL for it
 		//Step 3. replace the 'head' table in SQL by temp table
@@ -1148,8 +1314,24 @@ public class PGEngine implements QueryEngine {
 		
 	}
 	
-	static void testPNHats(){
+	private static RDFRuleImpl construct_rule(){
+		Clause cls = new ClauseSimpleImpl();
+		RDFPredicate tp = new RDFPredicate();
+		tp.setSubject(new String("?s1"));
+		tp.setPredicateName("hasGivenName");
+		tp.setObject(new String("?o1"));
+		cls.addPredicate(tp);
 		
+		RDFPredicate tp1 = tp.mapToIncorrectPred(); 		
+	 
+		RDFRuleImpl r0 = new RDFRuleImpl(); 
+		r0.set_body(cls);
+		r0.set_head(tp1);
+		
+		return r0; 
+	}
+	
+	private static Feedback construct_fb(){
 		ArrayList<Comment> listComments = new ArrayList<Comment>();
 
 		Triple t;
@@ -1177,21 +1359,28 @@ public class PGEngine implements QueryEngine {
 
 		Feedback fb = new Feedback();
 		fb.set_comments(listComments);
+		return fb;
+	}
+	
+	static void testGetFBJoinRule(){
+
+		PGEngine pg = new PGEngine();
 		
-		Clause cls = new ClauseSimpleImpl();
-		RDFPredicate tp = new RDFPredicate();
-		tp.setSubject(new String("?s1"));
-		tp.setPredicateName("hasGivenName");
-		tp.setObject(new String("?o1"));
-		cls.addPredicate(tp);
+		Feedback fb = construct_fb(); 
+		RDFRuleImpl r0 = construct_rule(); 
+		RDFSubGraphSet sg_set = pg.getFBJoinRule(fb, r0); 
 		
-		RDFPredicate tp1 = tp.mapToIncorrectPred(); 		
-	 
-		RDFRuleImpl r0 = new RDFRuleImpl(); 
-		r0.set_body(cls);
-		r0.set_head(tp1);
+		for(RDFSubGraph sg:sg_set.getSubGraphs()){
+			System.out.println(sg);
+		}
+	}
+	
+	static void testPNHats(){
 		
 		PGEngine pg = new PGEngine();
+		
+		Feedback fb = construct_fb(); 
+		RDFRuleImpl r0 = construct_rule(); 
 		
 		RDFPredicate ex_tp = new RDFPredicate(); 
 		ex_tp.setPredicateName("hasFamilyName");
@@ -1205,16 +1394,16 @@ public class PGEngine implements QueryEngine {
 		rp.setExtended(true);
 		pg.getPHatNhats(rp, ex_tp, listPHats, hmapNHats); 
 		
-		/*for (KVPair<String, Integer> kv: listPHats){
+		for (KVPair<String, Integer> kv: listPHats){
 			String val = kv.get_key();
 			int p_hat = kv.get_value();
 			int n_hat = hmapNHats.get(val);
 			System.out.println(val + "|" + p_hat + "|" + n_hat);
-		}*/
+		}
 	}
 	
 	public static void main(String[] args){
-		testPNHats();		
+		testGetFBJoinRule();		
 	}
 
 }
