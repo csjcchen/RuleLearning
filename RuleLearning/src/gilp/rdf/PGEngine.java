@@ -478,6 +478,17 @@ public class PGEngine implements QueryEngine {
 		return aggregate_att;
 	}
 	
+	//get the results of @fb join @r.body (KB)
+	//example @fb: hasGivenName (YM, Y), hasFamilyName(YM, M)
+	//@r: hasGivenName(?s1, ?o1) and rdfType(?s1, person) -> incorrect_hasGivenName(?s1, ?o1)
+	//@return select t.s, t.o, r.s, r.o
+	//from temp_tab as t, rdfType as r 
+	//where t.s=r.s and r.o='pernson' 
+	//here temp_tab (s, o) stores one tuple hasGivenName (YM, Y)
+	public RDFSubGraphSet getFBJoinRule(Feedback fb, RDFRuleImpl r){
+		return null;
+	}
+	
 	private boolean getPHatForExpandedRule(RulePackage rp, RDFPredicate tp, ArrayList<KVPair<String, Integer>> listPHats, HashMap<String,Integer> hmapNHats){
 		//Step 1. Create temple table, store the true positives in current feedbacks
 		//Step 2. build the expanded rule and build a SQL for it
@@ -506,13 +517,12 @@ public class PGEngine implements QueryEngine {
 		
 		String temp_table = "temp_triples_by_rule";
 		//1. build the temporary table 
-		String sql = "DROP Table IF EXISTS " + temp_table;
-		if (!DBController.exec_update(sql)){
+		if (!DBController.drop_tab(temp_table)){
 			GILPSettings.log(this.getClass().getName() + " there is error when dropping table " + temp_table + ".");
 			return false;
 		}
 		
-		sql = "create table " + temp_table + "(";		
+		String sql = "create table " + temp_table + "(";		
 		sql += "S character varying(1024),"; 
 		sql += "O character varying(1024)"; 
 		sql += ")"; 

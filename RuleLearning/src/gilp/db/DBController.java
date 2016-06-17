@@ -9,6 +9,15 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 
 public class DBController {
+	
+	public static boolean drop_tab (String tab_name){
+		String sql = "DROP Table IF EXISTS " + tab_name;
+		if (!exec_update(sql)){
+			GILPSettings.log(DBController.class + " there is error when dropping table " + tab_name + ".");
+			return false;
+		}
+		return true;
+	}
 
 	public static boolean exec_update(String sql){
 		

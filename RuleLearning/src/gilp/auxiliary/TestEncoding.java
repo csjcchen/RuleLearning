@@ -73,8 +73,9 @@ public class TestEncoding {
 	}
 	
 	public static void main(String[] args){
-		String str = "select from hasGivenName, hasFamilyName";
+		String str = "select from hasGivenName, hasFamilyName,";
 		System.out.println(str.replaceFirst("hasFamilyName", "abc"));
+		System.out.println(str.substring(0, str.lastIndexOf(",")));
 	}
 	
 

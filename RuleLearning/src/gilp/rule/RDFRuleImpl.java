@@ -40,6 +40,48 @@ public class RDFRuleImpl extends Rule {
 		this._sub_index = 1;
 		this._obj_index = 1;
 	}
+	
+	//example
+	//@r: hasGivenName(abc, ?o1) and hasGivenName(?s1, ?o1) and rdfType(?s1, person) -> incorrect_hasGivenName(?s1, ?o1)
+	//@return: 
+	//	hasGivenName(abc, ?o1)--> hasGivenName_1
+	//	hasGivenName(?s1, ?o1) --> hasGivenName_2
+	//	rdfType(?s1, person) --> rdfType_1
+	//  incorrect_hasGivenName(?s1, ?o1)-->hasGivenName_2
+
+	public HashMap<String, String> getRenamedPredicates(){
+		HashMap<String, String> hmapRlts = new HashMap<>(); 
+		
+		HashMap<String, Integer> hmap_preds = new HashMap<>(); 
+		//ArrayList<String> listPredicates = new ArrayList<String>(); 
+		
+		Iterator<Predicate> tpIterator = this._body.getIterator();
+		RDFPredicate head = (RDFPredicate)this.get_head().clone();
+		head = head.mapToOriginalPred(); 
+		
+		while(tpIterator.hasNext()){
+			RDFPredicate tp = (RDFPredicate)tpIterator.next();
+			
+			String prop_name = tp.getPredicateName();
+			
+			if(!hmap_preds.containsKey(tp.getPredicateName())){
+				hmap_preds.put(prop_name, 1);
+				prop_name += "_1";				
+			}
+			else{
+				int num = hmap_preds.get(prop_name);
+				num += 1; 
+				hmap_preds.put(prop_name, num);
+				prop_name += ("_" + num);
+			}
+			hmapRlts.put(tp.toString(), prop_name);
+			if(tp.equals(head)){
+				hmapRlts.put(((RDFPredicate)this.get_head().clone()).toString(), prop_name); 
+			}
+		}
+		
+		return hmapRlts;
+	}
 		
 	//@inc_var_idx: true return a new variable and increase the var_idx by 1; 
 	//false: only return a new variable. 

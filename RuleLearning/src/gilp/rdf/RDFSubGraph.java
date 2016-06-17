@@ -9,6 +9,8 @@ import gilp.rule.RDFPredicate;
  * CJC Nov. 13, 2015
  * */
 public class RDFSubGraph {
+	//TODO need to change ArrayList to HashMap. 
+	//Each triple should be explicitly linked with its predicate. 
 	private ArrayList<Triple> _triples;
 	
 	public RDFSubGraph(){

@@ -10,6 +10,7 @@ import java.util.PriorityQueue;
 import java.util.StringTokenizer;
 
 import deletedCodes.ExtendedFeature;
+import gilp.db.DBController;
 import gilp.feedback.Comment;
 import gilp.feedback.Feedback;
 import gilp.rdf.CompareOperator;
@@ -54,6 +55,71 @@ public class FeatureConstructor {
 		this._baseRP = rp;
 		this._F0 = initial_FB;
 		this._P0 = p0;
+	}
+	
+	//construct a table which stores the join results between the initial feedbacks
+	//and the baseRP 
+	//e.g. r0 = hasGivenName(?s1, ?o1) and rdfType(?s1, person) -> incorrect_hasGivenName(?s1, ?o1)
+	//table F0AndR0 ( hasGivenName_1_S, hasGivenName_1_O, rdfType_1_S, rdfType_1_O)
+	//the results are F0(hasGivenName(x, y)) join rdfType(x, person)(K)
+	private boolean constructBaseRPTable(){
+		String temp_table = "temp_F0R0";
+		String attr_type = "character varying(1024)";
+		
+		if (!DBController.drop_tab(temp_table)){
+			GILPSettings.log(this.getClass().getName() + " there is error when dropping table " + temp_table + ".");
+			return false;
+		}
+		
+		HashMap<String, String> hmapPredNames = this._baseRP._rule.getRenamedPredicates(); 
+		Iterator<Predicate> tpIterator = this._baseRP._rule.get_body().getIterator();
+		
+		RDFPredicate[] predicates = new RDFPredicate[this._baseRP._rule.get_body().getBodyLength()]; 
+		int i = 0;
+		String sql = "create table " + temp_table + "(";
+		while(tpIterator.hasNext()){
+			RDFPredicate tp = (RDFPredicate)tpIterator.next();		
+			predicates[i++] = tp;
+			String prop_name = hmapPredNames.get(tp.toString());
+			sql += prop_name + "_S " + attr_type + ", ";
+			sql += prop_name + "_O " + attr_type + ", ";
+		}
+		sql = sql.substring(0, sql.lastIndexOf(",")); //remove the last ','
+		sql += ")"; 
+		
+		if (!DBController.exec_update(sql)){
+			GILPSettings.log(this.getClass().getName() + " there is error when creating table " + temp_table + ".");
+			return false;
+		}
+		
+		PGEngine qe = new PGEngine(); 
+		RDFSubGraphSet sg_set = qe.getFBJoinRule(this._F0, this._baseRP._rule); 
+		for (RDFSubGraph sg : sg_set.getSubGraphs()){
+			sql = "insert into " + temp_table + " values (" ;
+			ArrayList<Triple> listTriples = sg.getTriples(); 
+			if (listTriples.size()!=predicates.length){
+				GILPSettings.log(this.getClass().getName() + " Error: the # of predicates is not the same as the size of sub-graph.");
+				return false;
+			}
+			
+			for (int j = 0; j<listTriples.size();j++){
+				Triple t = listTriples.get(j);
+				String prop_name = hmapPredNames.get(predicates[j].toString());
+				if (!prop_name.equalsIgnoreCase(t.get_predicate())){
+					GILPSettings.log(this.getClass().getName() + " Error: the name of predicate is wrong!");
+					return false;
+				}
+				sql += "'" + t.get_subject() + "','" + t.get_obj() + "',"; 
+			}
+			sql = sql.substring(sql.lastIndexOf(",")); //remove the last ','
+			sql += ")"; 
+			if (!DBController.exec_update(sql)){
+				GILPSettings.log(this.getClass().getName() + " there is error when inserting a tuple .");
+				GILPSettings.log(sql); 
+				return false;
+			}
+		}
+		return true;
 	}
 	 
 	/*
