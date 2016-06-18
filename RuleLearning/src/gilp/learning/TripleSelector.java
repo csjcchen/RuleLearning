@@ -34,11 +34,13 @@ public class TripleSelector {
 		ArrayList<Triple> chosenTriples = new ArrayList<>();
 		
 		while(true){
-			chosenTriples = this.chooseTriples(rp);
+			chosenTriples = this.chooseTriples(rp);			
 			if(chosenTriples.size()==0){
 				return 0;
 			}
 			else{
+				GILPSettings.log("feedbacks:" + rp.getRule().hashCode() + ":" +  chosenTriples.size() + ":" + rp.getRule());
+				
 				Feedback new_fb = _FBGenerator.getComments(chosenTriples);
 				for(Comment cmt : new_fb.get_comments()){
 					rp._fb.get_comments().add(cmt);
@@ -141,15 +143,25 @@ public class TripleSelector {
 		
 		RDFRuleImpl r = rp.getRule();
 		
-		//try to get at most 3*n triples to be used for sampling
-		ArrayList<Triple> listTriples = qe.getHeadCoverage(r, 10*n);
+		//try to get at most 10*n triples to be used for sampling
+		ArrayList<Triple> listTriples = qe.getHeadCoverage(r, 10*n);	
 		
-		int s = listTriples.size(); 
+		ArrayList<Triple> sampled_triples = new ArrayList<Triple> ();
+		for (int i=0;i<listTriples.size();i++){
+			if (!hmapExistedFB.containsKey(listTriples.get(i).toString())){
+				sampled_triples.add(listTriples.get(i).clone());
+				if (sampled_triples.size()>=n){
+					break;
+				}
+			}
+		}	
+		
+		/*
 		int[] isChosen = new int[s];
 		for(int i=0;i<s;i++){
 			isChosen[i] = 0;
 		}
-		ArrayList<Triple> sampled_triples = new ArrayList<Triple> ();
+	
 		while(sampled_triples.size()<Math.min(s, n)){
 			int idx = (int)Math.round(Math.random()*(s-1));
 			if (isChosen[idx] == 0 && hmapExistedFB.get(listTriples.get(idx).toString())==null){
@@ -157,7 +169,7 @@ public class TripleSelector {
 				isChosen[idx] = 1;
 			}	
 		}
-
+		 */
 		return sampled_triples;
 	}
 	
@@ -294,7 +306,7 @@ public class TripleSelector {
 	//@param p: the observed average
 	//@param n: number of samples
 	//@return: the lower and upper bounds of the interval
-	private double[] calcWilsonInterval(double p, double n){
+	public static double[] calcWilsonInterval(double p, double n){
 		double z = GILPSettings.CONFIDENCE_Z; 
  		double v1 = p*(1.0-p)/n + z*z/(4*n*n);
 		v1 = z * Math.sqrt(v1); 

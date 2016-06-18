@@ -92,7 +92,7 @@ public class ExpRulePackage extends RulePackage {
 	
 	@Override
 	@Deprecated 
-	void calcPN_Hats() {
+	public void calcPN_Hats() {
 		GILPSettings.log(this.getClass().getName() + "Error! The calcPN_Hats is not supported by ExpRulePackage."); 
 	} 
 }

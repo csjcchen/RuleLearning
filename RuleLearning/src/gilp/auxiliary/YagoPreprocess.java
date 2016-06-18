@@ -20,56 +20,7 @@ import gilp.rule.RDFRuleImpl;
  * */
 public class YagoPreprocess {
 	
-	private static RDFPredicate parsePredicate(String str_pred){
-		RDFPredicate tp = new RDFPredicate();
-		String pred_name = str_pred.substring(0, str_pred.indexOf("("));
-		tp.setPredicateName(pred_name);
-		String str_var = str_pred.substring(str_pred.indexOf("(")+1, str_pred.indexOf(","));
-		tp.setSubject(str_var.trim());
-		str_var = str_pred.substring(str_pred.indexOf(",")+1, str_pred.indexOf(")"));
-		tp.setObject(str_var.trim());
-		return tp;
-	}
 	
-	static ArrayList<RDFRuleImpl> parseRules(String fileName){
-		//example input:
-		//hasGivenName(?s1,?o1),rdfType(?s1,Chinese)->correct_hasGivenName(?s1,?o1)
-		RandomAccessFile file = null; 
-		ArrayList<RDFRuleImpl> listRlts = new ArrayList<>();
-		try{
-			file = new RandomAccessFile(fileName,"r"); 
-			String line = "";
-			String str_pred = "";
-			
-			while((line = file.readLine())!=null){
-				RDFRuleImpl r = new RDFRuleImpl();
-				while(line.indexOf("),")>=0){
-					str_pred = line.substring(0, line.indexOf("),")+1); 
-					
-					if (str_pred.length()>0){
-						r.get_body().addPredicate(parsePredicate(str_pred));
-					}
-					line = line.substring(line.indexOf("),")+2);
-				}
-				
-				str_pred = line.substring(0, line.indexOf("->"));
-				if (str_pred.length()>0){
-					r.get_body().addPredicate(parsePredicate(str_pred));
-				}
-				line = line.substring(line.indexOf("->")+2);
-				
-				if(line.length()>1){
-					r.set_head(parsePredicate(line));
-				}
-				listRlts.add(r);
-			}
-			file.close();
-		}
-		catch (Exception ex){
-			ex.printStackTrace(System.out);
-		}
-		return listRlts;
-	}
 	
 	static void rdftTypeDistribution(){
 		
@@ -551,9 +502,6 @@ public class YagoPreprocess {
 	}
 	
 	public static void main(String[] args){
-		ArrayList<RDFRuleImpl> rules = parseRules("D:\\temp\\example-rules.txt");
-		for(RDFRuleImpl r:rules){
-			System.out.println(r);
-		}
+		
 	}
 }

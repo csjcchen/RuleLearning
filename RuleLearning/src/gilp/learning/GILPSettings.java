@@ -64,6 +64,8 @@ public class GILPSettings {
 		//minimum requirement for an intermediate rule
 	public static String TEMP_TABLE_F0R0 = "temp_tab_F0R0";
 		//the name of the table storing the join results of initial feedbacks and a rule to be expanded
+	public static double SAME_HC_THRESHOLD = 0.95; 
+		//if r1 is child of r0, and HC(r0)/HC(r1) > SAME_HC_THRESHOLD, we prune r1 
 	
 	public static int DB_ENGINE; 
 		//1: RDF3X; 2: PostgreSQL; 

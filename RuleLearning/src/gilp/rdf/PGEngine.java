@@ -234,7 +234,7 @@ public class PGEngine implements QueryEngine {
 	}
 	
 	//return HC(r1)\cap HC(r2) / HC(r1)  
-	double getHCContainedPr(RDFRuleImpl r1, RDFRuleImpl r2){
+	public double getHCContainedPr(RDFRuleImpl r1, RDFRuleImpl r2){
 		int num = 200; // # of tuples sampled from both HC
 		
 		ArrayList<Triple> listHC1 = getHeadCoverage(r1, num); 
@@ -308,6 +308,12 @@ public class PGEngine implements QueryEngine {
 				String sql = this.buildSQL(convertedCls);
 				sql =  sql.substring(sql.indexOf("from"));		
 				sql = sel + sql;				
+				
+				if (sql.indexOf("where")>=0)
+					sql += " and random()<0.05 ";
+				else 
+					sql += " where random()<0.05 "; 
+				
 				//sql += " order by random() ";//remove this condition to get efficiency
 				sql += "  limit " + n; 
 				
@@ -346,7 +352,12 @@ public class PGEngine implements QueryEngine {
 		else{
 			String sql = this.buildSQL(r.get_body());
 			sql =  sql.substring(sql.indexOf("from"));		
-			sql = sel + sql;				
+			sql = sel + sql;	
+			if (sql.indexOf("where")>=0)
+				sql += " and random()<0.05 ";
+			else 
+				sql += " where random()<0.05 "; 
+			
 			//sql += " order by random() ";
 			sql += "  limit " + n; 
 			Clause cls = new ClauseSimpleImpl();
@@ -615,7 +626,7 @@ public class PGEngine implements QueryEngine {
 		 
 		//compute p_hats and n_hats for variable atom
 		String sql = "select " + sql_sel + sql_from + sql_wh;
-		System.out.println(sql);
+		//System.out.println(sql);
 		ArrayList<ArrayList<String>> listTuples = DBController.getTuples(sql);
 		if (listTuples == null)
 			return true;
@@ -635,23 +646,30 @@ public class PGEngine implements QueryEngine {
 		sql_sel = "select " + aggregate_att + ", " + sql_sel; 
 		sql = sql_sel + sql_from + sql_wh; 
 		sql += " group by " + aggregate_att; 
-		sql += " having " + str_count + ">" + (rp.getP0()-0.01); 
-		System.out.println(sql);
+		sql += " order by pHat desc";
+		//sql += " having " + str_count + ">" + (rp.getP0()-0.01); 
+		//System.out.println(sql);
 		
 			
 		listTuples = DBController.getTuples(sql);
 		if (listTuples == null)
 			return true;
 		
+		GILPSettings.log("getPhat:" + rp.getRule().hashCode() + ":# of chosen atoms:" + listTuples.size() + ":" + rp.getRule());
+		int num = 0;
 		//constant, PHat, COV
 		for(ArrayList<String> tuple1: listTuples){
 			String val = tuple1.get(0);
+			if (p_hat<rp.getP0()){	
+				break;
+			}
+			num++;
 			p_hat = Integer.parseInt(tuple1.get(1));
 			n_hat = 0;
 			listPHats.add(new KVPair<String, Integer>(val, p_hat)); 
 			hmapNHats.put(val, n_hat);
 		}
-				
+		GILPSettings.log("getPhat:" + rp.getRule().hashCode() + ":# of qualified atoms:" + num + ":" + rp.getRule());		
 		return true;
 	}
 	

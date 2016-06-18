@@ -158,9 +158,11 @@ public class FeatureConstructor {
 						validExpansion = false; 
 					}	
 				}
-				if(validExpansion)
-					listRlts.addAll(expand(tp));
-					
+				if(validExpansion){
+					//TODO need to use selectivity instead
+					if(!tp.getPredicateName().equalsIgnoreCase("hasGender"))
+						listRlts.addAll(expand(tp));
+				}	
 				//introduce a new variable in the object
 				var =  r0.getNextObjectVar(false);
 				tp = new RDFPredicate(); 

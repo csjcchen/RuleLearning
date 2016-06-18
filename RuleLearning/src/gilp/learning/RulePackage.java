@@ -235,7 +235,7 @@ public class RulePackage {
 	}
 	
 	// calculate the P_Hat and N_Hat 
-	void calcPN_Hats() {
+	public void calcPN_Hats() {
 		if (this.isExtended()){
 			this._PHat = 0;
 			this._NHat = 0;
