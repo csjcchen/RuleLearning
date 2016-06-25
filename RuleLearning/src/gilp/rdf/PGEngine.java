@@ -556,6 +556,86 @@ public class PGEngine implements QueryEngine {
 	}
 	
 	
+	
+	public double getPHatForSingleAtom(RulePackage rp, RDFPredicate tp) {
+		// example:
+		// r0: hasGivenName(x, y) and rdftype(x, China) -> incorrect_hasGivenName(x, y)
+		// tp: livesIn(x, Beijing)
+		// sql: select count(distinct hasGivenName_1_S || '-' ||
+		// hasGivenName_1_O) as pHat
+		// from temp_tab_F0G0 as temp, livesIn as ex
+		// where hasGivenName_1_S=ex.S
+		// and  ex.O='Beijing'
+		
+		RDFRuleImpl r0 = rp.getRule();
+		RDFPredicate head = (RDFPredicate)r0.get_head();
+		HashMap<String, String> hmapPredNames = r0.getRenamedPredicates();
+		String head_rn = hmapPredNames.get(head.toString());
+		
+		String sql_wh = "where "; 
+		String sql_sel = " ";
+		String str_count = ""; 
+		
+		boolean find_join = false;
+		Iterator<Predicate> myIter = r0.get_body().getIterator(); 
+		JoinType[] jts = null;
+		while(myIter.hasNext()){
+			RDFPredicate p = (RDFPredicate) myIter.next(); 
+			String pred_rn = hmapPredNames.get(p.toString());
+			if (!find_join){
+		    	jts = RDFPredicate.getJoinTypes(p, tp);
+				if(jts!=null){					
+					switch(jts[0]){
+					case 
+						SS: sql_wh += pred_rn + "_S=ex.S ";    
+						break; 
+					case 
+						SO: sql_wh += pred_rn + "_S=ex.O ";
+						break;
+					case OS:
+						sql_wh += pred_rn + "_O=ex.S ";
+						break; 
+					case OO:
+						sql_wh += pred_rn + "_O=ex.O ";
+						break;
+					}				
+					find_join = true;
+				}				
+		    }
+			str_count = " count(distinct " + pred_rn + "_S || '-' ||" + pred_rn + "_O)";
+		    if(pred_rn.equals(head_rn)){
+		    	sql_sel += str_count + " as pHat "; 
+		    	if(find_join) 
+		    		break;
+		    }			
+		}		
+		
+		if(!find_join){
+			GILPSettings.log(this.getClass() + "cannot find join." + r0.toString() + " || " + tp.toString());
+			return -1;
+		}
+		
+		if(!tp.isSubjectVariable()){
+			sql_wh += " and ex.S='" + tp.getSubject() + "'";
+		}
+		if(!tp.isObjectVariable()){
+			if (tp.isObjectNumeric())
+				sql_wh += " and ex.num_o between " + tp.getObjBounds()[0] + " and " + tp.getObjBounds()[1];
+			else
+				sql_wh += " and ex.O='" + tp.getObject() + "' ";
+		}
+		
+		
+		String sql_from = " from " + GILPSettings.TEMP_TABLE_F0R0 + ", " + tp.getPredicateName() + " as ex "; 
+		String sql = "select " + sql_sel + sql_from + sql_wh;
+		
+		System.out.println(sql);
+		
+		String rlt = DBController.getSingleValue(sql);
+				
+		return Double.parseDouble(rlt);
+	}
+	
 	private boolean getPHatForExpandedRule(RulePackage rp, RDFPredicate tp, ArrayList<KVPair<String, Integer>> listPHats, HashMap<String,Integer> hmapNHats){
 		//example:
 		// r0: hasGivenName(x, y) and rdftype(x, China) -> incorrect_hasGivenName(x, y)

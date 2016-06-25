@@ -188,14 +188,22 @@ public class Simulator {
 					int num = 0;
 					for (ExpRulePackage exRP: expanded_rules){
 						RDFRuleImpl child_r = exRP.getRule().clone();
-						double pr = pg.getHCContainedPr(rp.getRule(), child_r); 
+						
+						/*double pr = pg.getHCContainedPr(rp.getRule(), child_r); 
 						if(pr>GILPSettings.SAME_HC_THRESHOLD){
 							//if r1 is child of r0, and HC(r0)/HC(r1) > SAME_HC_THRESHOLD, we prune r1 
 							continue;
-						}
+						}*/
+						
 						num++;
 						child_r.normalize();
 						RulePackage child_rp = new RulePackage(child_r, rp.getFeedback(), rp);
+						
+						/*ArrayList<RDFPredicate> atoms  = rp.getQualifiedAtoms();						 
+						for (RDFPredicate quali_tp: atoms){
+							child_rp.addQualifiedAtom(quali_tp);
+						}*/
+						
 						child_rp.setExtended(true);
 						child_rp.setP0(rp.getP0());
 						candi_rules.add(child_rp);

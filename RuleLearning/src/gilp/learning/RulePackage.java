@@ -27,6 +27,8 @@ public class RulePackage {
 	RDFRuleImpl _rule = null; 
 	RulePackage _base_RP = null;
 	Feedback _fb = null; 
+	ArrayList<RDFPredicate> _qualified_atoms; 
+	
 	double _P0; //P_Hat of the first generation w.r.t. F0
 	double _PHat; 
 	double _NHat; 
@@ -70,6 +72,19 @@ public class RulePackage {
 	} 
 	public Feedback getFeedback(){
 		return this._fb; 
+	}
+
+	public void addQualifiedAtom(RDFPredicate atom){
+		if(this._qualified_atoms == null)
+			this._qualified_atoms = new ArrayList<RDFPredicate>();
+		
+		_qualified_atoms.add(atom);		
+	}
+	
+	public ArrayList<RDFPredicate> getQualifiedAtoms(){
+		if (_qualified_atoms==null)
+			_qualified_atoms = new ArrayList<>();
+		return this._qualified_atoms;
 	}
 		
 	void init(){

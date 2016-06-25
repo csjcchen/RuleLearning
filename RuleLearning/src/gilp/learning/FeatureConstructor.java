@@ -134,51 +134,85 @@ public class FeatureConstructor {
 		RDFRuleImpl r0 = this._baseRP.getRule();	
 		ArrayList<String> args = r0.getArguments();
 		
+		HashMap<String, String> hmapGrandpaArgs = new HashMap<>(); 
+		
+		ArrayList<RDFPredicate> quali_atoms = null;
+		if(this._baseRP.getBaseRP()!=null){
+			ArrayList<String> tempArgs = this._baseRP.getBaseRP().getRule().getArguments();
+			for(String a: tempArgs){
+				hmapGrandpaArgs.put(a, "");
+			}
+			quali_atoms = this._baseRP.getBaseRP().getQualifiedAtoms(); 
+		}
+		
 		ArrayList<ExpRulePackage> listRlts = new ArrayList<ExpRulePackage>(); 
+		
+		if(quali_atoms!=null){
+			PGEngine pg = new PGEngine(); 
+			for (RDFPredicate quali_tp: quali_atoms){
+				double p_hat = pg.getPHatForSingleAtom(this._baseRP, quali_tp); 
+				if (p_hat>this._P0-0.001){
+					RDFRuleImpl new_r = this._baseRP.getRule().clone();
+					new_r.get_body().addPredicate(quali_tp);
+					
+					ExpRulePackage new_rp = new ExpRulePackage(new_r, this._baseRP, p_hat, 0);
+					
+					if (pg.isLargerThanMinHC(new_r)){
+						listRlts.add(new_rp);
+						this._baseRP.addQualifiedAtom(quali_tp);
+					}
+				}
+			}			 
+		}
+		
 		for (String U: args){
 			//for (String V: args){					
 				//TODO: construct a new extended feature as R(U,V) and add it to the candidates
 				//Now, just ignore this!!!			
 			//}			
-			for (String pr_name : pred_names){		
-			 	if(pr_name.indexOf("rdftype")>=0 && r0.containPredicate("rdftype")){
-			 		//TODO close this expansion now. Two inefficient to joint between two rdftype tables
-			 		continue;
-			 	}
-				//introduce a new variable in the subject
-				String var =  r0.getNextSubjectVar(false);
-				RDFPredicate tp = new RDFPredicate(); 
-				tp.setPredicateName(pr_name);
-				tp.setSubject(var);
-				tp.setObject(U);//object is shared with r0
-				boolean validExpansion = true;
-				if (!U.startsWith("?")){
-					//avoid the cases like hasArea(?s, USA)
-					if (tp.isObjectNumeric() && !StringUtils.isNumeric(U)){						
-						validExpansion = false; 
-					}	
-				}
-				if(validExpansion){
-					//TODO need to use selectivity instead
-					if(!tp.getPredicateName().equalsIgnoreCase("hasGender"))
-						listRlts.addAll(expand(tp));
-				}	
-				//introduce a new variable in the object
-				var =  r0.getNextObjectVar(false);
-				tp = new RDFPredicate(); 
-				tp.setPredicateName(pr_name);
-				tp.setSubject(U);//subject is shared with r0
-				tp.setObject(var);
-				validExpansion = true;
-				if(!U.startsWith("?")){
-					if(tp.isSubjectVariable() && !StringUtils.isNumeric(U)){
-						validExpansion = false;
+			if(!hmapGrandpaArgs.containsKey(U)){				
+				for (String pr_name : pred_names){		
+				 	if(pr_name.indexOf("rdftype")>=0 && r0.containPredicate("rdftype")){
+				 		//TODO close this expansion now. Two inefficient to joint between two rdftype tables
+				 		continue;
+				 	}
+					//introduce a new variable in the subject
+					String var =  r0.getNextSubjectVar(false);
+					RDFPredicate tp = new RDFPredicate(); 
+					tp.setPredicateName(pr_name);
+					tp.setSubject(var);
+					tp.setObject(U);//object is shared with r0
+					boolean validExpansion = true;
+					if (!U.startsWith("?")){
+						//avoid the cases like hasArea(?s, USA)
+						if (tp.isObjectNumeric() && !StringUtils.isNumeric(U)){						
+							validExpansion = false; 
+						}	
 					}
-				}
-				if(validExpansion )
-					listRlts.addAll(expand(tp)); 	
-			}
+					if(validExpansion){
+						//TODO need to use selectivity instead
+						if(!tp.getPredicateName().equalsIgnoreCase("hasGender"))
+							listRlts.addAll(expand(tp));
+					}	
+					//introduce a new variable in the object
+					var =  r0.getNextObjectVar(false);
+					tp = new RDFPredicate(); 
+					tp.setPredicateName(pr_name);
+					tp.setSubject(U);//subject is shared with r0
+					tp.setObject(var);
+					validExpansion = true;
+					if(!U.startsWith("?")){
+						if(tp.isSubjectVariable() && !StringUtils.isNumeric(U)){
+							validExpansion = false;
+						}
+					}
+					if(validExpansion )
+						listRlts.addAll(expand(tp)); 	
+				}	
+			}			
 		}		
+		
+
 		
 		return listRlts;
 	}
@@ -294,6 +328,7 @@ public class FeatureConstructor {
 			
 			if (qe.isLargerThanMinHC(new_r)){
 				listRlts.add(new_rp);
+				this._baseRP.addQualifiedAtom(new_tp);
 				System.out.println(new_rp.getRule());
 			}
 			else{
