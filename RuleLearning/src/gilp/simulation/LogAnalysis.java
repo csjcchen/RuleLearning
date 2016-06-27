@@ -22,6 +22,7 @@ public class LogAnalysis {
 		HashMap<Integer, Integer> hmapQualifiedAtoms = new HashMap<>(); 
 		HashMap<Integer, Integer> hmapChildren = new HashMap<>();
 		HashMap<Integer, Integer> hmapQualifiedChildren = new HashMap<>();
+		int total_time_pull_fb = 0;
 		
 		try{
 			file = new RandomAccessFile(fileName, "r"); 
@@ -54,6 +55,16 @@ public class LogAnalysis {
 					else{
 						insertItem(hmapAtoms, r_code, num); 
 					}
+				}
+				else if(msgType.startsWith("time cost in pulling feedbacks")){
+					//time cost in pulling feedbacks:57011
+					int num = Integer.parseInt(msgType.substring(msgType.lastIndexOf(":")+1)); 
+					total_time_pull_fb += num;
+				}
+				else if (msgType.startsWith("time cost in phase two")){
+					//time cost in phase two: 90912132
+					int num = Integer.parseInt(msgType.substring(msgType.lastIndexOf(":")+1));
+					System.out.println("the time cost in phase two: " + (num-total_time_pull_fb));					
 				}
 				else{
 					System.out.println(line);
@@ -115,6 +126,7 @@ public class LogAnalysis {
 	}
 	
 	public static void main(String[] args){
-		pruningEffects("/home/jchen/gilp/gilp18-21-55.log");
+		pruningEffects("D:\\Works\\paperwork\\rule-mining\\simulation\\hc50.log");
+		//pruningEffects("/home/jchen/gilp/gilp18-21-55.log");
 	}
 }

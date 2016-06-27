@@ -223,7 +223,7 @@ public class Simulator {
 		}
 		time1 = System.currentTimeMillis();
 		System.out.println("time cost in phase two:" + (time1-time0));
-		
+		GILPSettings.log("time cost in phase two:" + (time1-time0));
 		GILPSettings.log("# of verified rules:" + num_verified_rules);
 		
 		if (accepted_rules.size()>0){

@@ -201,6 +201,7 @@ public class GILPSettings {
 		System.out.println("MAXIMUM_RULE_LENGTH:" + MAXIMUM_RULE_LENGTH);
 		System.out.println("IS_DEBUG:" + IS_DEBUG);
 		System.out.println("MINIMUM_PRECISION:" + MINIMUM_PRECISION);
+		System.out.println("MINIMUM_HC:" + MINIMUM_HC);
 		
 		switch(DB_ENGINE){
 	 	case 1:
