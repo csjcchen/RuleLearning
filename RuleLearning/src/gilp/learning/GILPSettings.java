@@ -151,7 +151,7 @@ public class GILPSettings {
 		String logFile = sim_prop.getProperty("logfile");
 		Date d = new Date();
 
-		logFile += d.getDate() + "-" + d.getHours() + "-" + d.getMinutes() + ".log";
+		logFile += "gilp" + d.getDate() + "-" + d.getHours() + "-" + d.getMinutes() + ".log";
 
 		try {
 			log = new PrintWriter(new FileWriter(logFile, true), true);
@@ -169,6 +169,8 @@ public class GILPSettings {
 		IS_DEBUG = (sim_prop.getProperty("IS_DEBUG").equals("true"));
 	 	MINIMUM_PRECISION = Double.parseDouble(sim_prop.getProperty("MINIMUM_PRECISION"));
 	 	MAX_NUM_FEEDBACK = Integer.parseInt(sim_prop.getProperty("MAX_NUM_FB"));
+	 	MINIMUM_HC = Integer.parseInt(sim_prop.getProperty("HC_THRESHOLD"));
+	 	
 	    
 	 	DB_ENGINE = Integer.parseInt(sim_prop.getProperty("DB_ENGINE"));
 	 		//1: RDF3X; 2: PostgreSQL; 	

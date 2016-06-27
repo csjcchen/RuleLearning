@@ -158,8 +158,12 @@ public class Simulator {
 		ArrayList<RulePackage> accepted_rules = new ArrayList<>(); 
 		
 		learner = new RDFBFSLearner(fb, k);
-		 
+		long time0 = System.currentTimeMillis(); 
 		candi_rules = learner.learn_rule(candi_rules);
+		long time1 = System.currentTimeMillis();
+		
+		System.out.println("time cost in phase one:" + (time1-time0));
+		time0 = time1; 
 		
 		TripleSelector triple_sel = new TripleSelector();
 		
@@ -216,7 +220,10 @@ public class Simulator {
 				}
 			}
 			len++;
-		}		
+		}
+		time1 = System.currentTimeMillis();
+		System.out.println("time cost in phase two:" + (time1-time0));
+		
 		GILPSettings.log("# of verified rules:" + num_verified_rules);
 		
 		if (accepted_rules.size()>0){

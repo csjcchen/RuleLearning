@@ -41,6 +41,63 @@ public class RDFRuleImpl extends Rule {
 		this._obj_index = 1;
 	}
 	
+	public boolean isConnected(){
+		 
+		HashMap<String, ArrayList<Predicate>> hmapVar = new HashMap<>(); 
+		
+		Iterator<Predicate> myIter = this._body.getIterator();
+		while(myIter.hasNext()){
+			RDFPredicate tp = (RDFPredicate) myIter.next(); 
+			if (tp.isSubjectVariable()){
+				String var = tp.getSubject();
+				ArrayList<Predicate> pres =  new ArrayList<>();				
+				if(hmapVar.containsKey(var)){
+					pres = hmapVar.get(var); 					
+				}
+				pres.add(tp);
+				hmapVar.put(var,pres);				
+			}
+			if(tp.isObjectVariable() && !tp.getObject().equals(tp.getSubject())){
+				String var = tp.getObject();
+				ArrayList<Predicate> pres =  new ArrayList<>();				
+				if(hmapVar.containsKey(var)){
+					pres = hmapVar.get(var); 					
+				}
+				pres.add(tp);
+				hmapVar.put(var,pres);
+			}	
+		}
+		
+		for (String var : hmapVar.keySet()){
+			ArrayList<Predicate> pres = hmapVar.get(var); 
+			if(pres.size()<2){
+				RDFPredicate tp = (RDFPredicate) pres.get(0);
+				if(tp.getSubject().equals(var)){
+					if(!tp.isObjectVariable()) 
+						return false;
+					else{
+						String v2 = tp.getObject();
+						if(hmapVar.get(v2).size()<2){
+							return false;
+						}
+					}					
+				}
+				else{
+					if(!tp.isSubjectVariable()) 
+						return false;
+					else{
+						String v2 = tp.getSubject();
+						if(hmapVar.get(v2).size()<2){
+							return false;
+						}
+					}
+				}				
+			}
+		}
+		
+		return true;
+	}
+	
 	//example
 	//@r: hasGivenName(abc, ?o1) and hasGivenName(?s1, ?o1) and rdfType(?s1, person) -> incorrect_hasGivenName(?s1, ?o1)
 	//@return: 
@@ -259,23 +316,32 @@ public class RDFRuleImpl extends Rule {
 		ArrayList<String> listRlt = new ArrayList<>(); 
 		Iterator<Predicate> iterPred = this.get_body().getIterator();
 		
+		HashMap<String,String> hmapArgs = new HashMap<>();
 		boolean freshSub = true;
 		boolean freshObj = true;
 		while(iterPred.hasNext()){
 			RDFPredicate p = (RDFPredicate) iterPred.next();
-			if (p.getSubject().equals(tp.getSubject()))
-				freshSub = false;			
-			if (p.getObject().equals(tp.getObject()))
-				freshObj = false;			
-			if (!freshSub && !freshObj)
-				break;
+			if(!hmapArgs.containsKey(p.getSubject())){
+				hmapArgs.put(p.getSubject(), "");
+			}
+			if(!hmapArgs.containsKey(p.getObject())){
+				hmapArgs.put(p.getObject(),"");
+			}
+		}		
+		RDFPredicate head = (RDFPredicate) this.get_head();
+		if(!hmapArgs.containsKey(head.getSubject())){
+			hmapArgs.put(head.getSubject(), "");
+		}
+		if(!hmapArgs.containsKey(head.getObject())){
+			hmapArgs.put(head.getObject(),"");
 		}
 		
-		RDFPredicate head = (RDFPredicate) this.get_head();
-		if (head.getSubject().equals(tp.getSubject()))
-			freshSub = false;			
-		if (head.getObject().equals(tp.getObject()))
+		if(hmapArgs.containsKey(tp.getSubject())){
+			freshSub = false;
+		}
+		if(hmapArgs.containsKey(tp.getObject())){
 			freshObj = false;
+		}		
 		
 		if(freshSub)
 			listRlt.add(tp.getSubject());

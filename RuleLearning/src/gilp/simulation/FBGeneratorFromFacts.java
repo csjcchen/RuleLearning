@@ -7,6 +7,7 @@ import java.util.HashMap;
 import gilp.feedback.Comment;
 import gilp.feedback.Feedback;
 import gilp.feedback.FeedbackBaseManager;
+import gilp.learning.GILPSettings;
 import gilp.rdf.Triple;
 import gilp.db.*;
 
@@ -58,7 +59,7 @@ public class FBGeneratorFromFacts {
 			int idx = (int) Math.round(Math.random() * (s - 1));
 			if (isChosen[idx] == 0) {
 				Comment cmt = this._known_comments.get(idx).clone();
-				if (cmt.get_triple().get_predicate().equalsIgnoreCase(PREDICATE)){
+				if (cmt.get_triple().get_predicate().equalsIgnoreCase(PREDICATE) && cmt.get_decision()==false){
 					isChosen[idx] = 1;
 					listCmts.add(cmt);
 				}
@@ -85,6 +86,7 @@ public class FBGeneratorFromFacts {
 			}
 			else{
 				//ask use to input comment
+				long time0 = System.currentTimeMillis();
 				System.out.println("Is the triple \"" + t + "\" correct?(y/n):");
 
 				try {
@@ -109,8 +111,9 @@ public class FBGeneratorFromFacts {
 					// TODO Auto-generated catch block
 					e.printStackTrace(System.out);
 				}
-				
-	
+				long time1 = System.currentTimeMillis();
+				System.out.println("time cost in pulling feedbacks:" + (time1-time0));
+				GILPSettings.log("time cost in pulling feedbacks:" + (time1-time0));
 			}
 		}
 		Feedback fb = new Feedback();

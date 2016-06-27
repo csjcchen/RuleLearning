@@ -132,13 +132,13 @@ public class FeatureConstructor {
 		
 		ArrayList<String> pred_names = GILPSettings.getAllPredicateNames();
 		RDFRuleImpl r0 = this._baseRP.getRule();	
-		ArrayList<String> args = r0.getArguments();
+		ArrayList<String> args = r0.getVariables();
 		
 		HashMap<String, String> hmapGrandpaArgs = new HashMap<>(); 
 		
 		ArrayList<RDFPredicate> quali_atoms = null;
 		if(this._baseRP.getBaseRP()!=null){
-			ArrayList<String> tempArgs = this._baseRP.getBaseRP().getRule().getArguments();
+			ArrayList<String> tempArgs = this._baseRP.getBaseRP().getRule().getVariables();
 			for(String a: tempArgs){
 				hmapGrandpaArgs.put(a, "");
 			}
@@ -191,8 +191,13 @@ public class FeatureConstructor {
 					}
 					if(validExpansion){
 						//TODO need to use selectivity instead
-						if(!tp.getPredicateName().equalsIgnoreCase("hasGender"))
-							listRlts.addAll(expand(tp));
+						// diedOnDate, wasBornOnDate happenedOnDate wasCreatedOnDate wasDestroyedOnDate
+						if(tp.getPredicateName().equalsIgnoreCase("hasGender")  || tp.getPredicateName().indexOf("Date")>=0)
+						{	
+							int a = 1;
+						}
+						else{	
+							listRlts.addAll(expand(tp));}
 					}	
 					//introduce a new variable in the object
 					var =  r0.getNextObjectVar(false);
@@ -206,8 +211,16 @@ public class FeatureConstructor {
 							validExpansion = false;
 						}
 					}
-					if(validExpansion )
-						listRlts.addAll(expand(tp)); 	
+					if(validExpansion ){
+						if(tp.getPredicateName().equalsIgnoreCase("hasGender")  || tp.getPredicateName().indexOf("Date")>=0)
+						{	
+							int a = 1;
+						}
+						else{
+							listRlts.addAll(expand(tp));
+						}
+					}
+						 	
 				}	
 			}			
 		}		
@@ -325,6 +338,10 @@ public class FeatureConstructor {
 			RDFRuleImpl new_r = this._baseRP.getRule().clone();
 			new_r.get_body().addPredicate(new_tp);
 			ExpRulePackage new_rp = new ExpRulePackage(new_r, this._baseRP, p_hat, n_hat);
+			
+			if (!new_r.isConnected()){
+				System.out.println("Error: The rules is not connected:" + new_r);
+			}
 			
 			if (qe.isLargerThanMinHC(new_r)){
 				listRlts.add(new_rp);

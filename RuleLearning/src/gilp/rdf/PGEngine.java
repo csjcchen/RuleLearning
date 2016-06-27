@@ -629,7 +629,7 @@ public class PGEngine implements QueryEngine {
 		String sql_from = " from " + GILPSettings.TEMP_TABLE_F0R0 + ", " + tp.getPredicateName() + " as ex "; 
 		String sql = "select " + sql_sel + sql_from + sql_wh;
 		
-		System.out.println(sql);
+		//System.out.println(sql);
 		
 		String rlt = DBController.getSingleValue(sql);
 				
@@ -1233,6 +1233,7 @@ public class PGEngine implements QueryEngine {
 	// get at most @num sub-graphs
 	private RDFSubGraphSet doQuery(Clause cls, String query) {
 		// execute the SPARQL		
+		long time0 = System.currentTimeMillis();
 		Connection conn = null;
 		PreparedStatement pstmt = null;
 		ResultSet rs = null;				 
@@ -1253,6 +1254,10 @@ public class PGEngine implements QueryEngine {
 		{
 			DBPool.closeAll(conn, pstmt, rs);
 		}	
+		long time1 = System.currentTimeMillis();
+		if(time1-time0>3000){
+			GILPSettings.log("expensive query:" + (time1-time0) +  ":" + query); 
+		}
 		return sg_set;
 	}
 
