@@ -76,7 +76,7 @@ public class TripleSelector {
 			return new ArrayList<Triple>();
 	}
 	
-	
+	/*
 	@Deprecated
 	public ArrayList<Triple> selectTriples(ArrayList<RulePackage> listRules){
 		//TODO we need some limitations on the number of total triples we want to probe
@@ -104,12 +104,7 @@ public class TripleSelector {
 		FeatureConstructor f_c = new FeatureConstructor( rp, null, 0); 
 		ArrayList<ExpRulePackage> candi_rules = f_c.constructFeatures();
 			//try to extend/specialize the rule with data stored in the KB
-		/*if (GILPSettings.IS_DEBUG){
-			System.out.println("extended features for rule:" + r);
-			for(Rule can_r: candi_rules){
-				System.out.println(can_r);
-			}
-		}*/ 
+		 
 		candi_rules = RulePackageFactory.chooseTopExpRP(candi_rules, k);
 			//at each round, we only focus on the rules with top-k best qualities
 		
@@ -129,7 +124,7 @@ public class TripleSelector {
 			}
 		}
 		return list_rlts;
-	}
+	}*/
 	
 	
 	//randomly choose @n triples from the head coverage of the input rule
@@ -281,7 +276,7 @@ public class TripleSelector {
 	//calculate the number of samples in order to satisfy the given quality threshold
 	//@param p: the average of the the samples
 	//we currently utilize the iteration method
-	private int calcRequiredNum(RulePackage rp){
+	/*private int calcRequiredNum(RulePackage rp){
 		
 		double p = rp.getPrecision();
 		
@@ -294,13 +289,13 @@ public class TripleSelector {
 			int mid = (num1+num2)/2;
 			double l = calcWilsonInterval(p, mid)[0]; 
 				
-			if (l > GILPSettings.THRESHOLD_OF_PR)
+			if (l > GILPSettings.PRECISION_THRESHOLD)
 				num2 = mid;			
 			else
 				num1 = mid;			
 		}
 		return num2;
-	}
+	}*/
 	
 	//calculate the wilson interval
 	//@param p: the observed average

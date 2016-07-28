@@ -147,7 +147,7 @@ public class Simulator {
 		//FeedbackGenerator fb_gen = new FeedbackGenerator(); 
 		FBGeneratorFromFacts fb_gen = new FBGeneratorFromFacts();
 		 	
-		Feedback fb = fb_gen.getRandomComments(num_comments);
+		Feedback fb = fb_gen.getFixedComments();//getRandomComments(num_comments);
 
 		Feedback initial_fb = new Feedback(); 
 		initial_fb.set_comments(fb.get_comments()); 
@@ -242,6 +242,10 @@ public class Simulator {
 				
 			}	
 		}
+		else{
+			System.out.println("no qualified rules.");
+			GILPSettings.log("no qualified rules.");
+		}
 		
 	}
 	
@@ -254,7 +258,7 @@ public class Simulator {
 		}
 		return listRlts;
 	}
- 
+ /*
 	void simulate(){
 		int num_comments = 5; //number of initial comments 
 		int k = 1;//top-k best rules
@@ -325,7 +329,7 @@ public class Simulator {
 			System.out.println(rp.getRule());
 		}
 	}
-	
+	*/
 	public static void main(String[] args){
 		//new Simulator().offlineAnalysis();
 		new Simulator().simulate_twoPhases();

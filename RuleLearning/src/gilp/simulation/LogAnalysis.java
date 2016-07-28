@@ -4,6 +4,8 @@ import java.io.RandomAccessFile;
 import java.util.HashMap;
 import java.util.StringTokenizer;
 
+import gilp.learning.TripleSelector;
+
 public class LogAnalysis {
 	
 	//# of rules requiring feedbacks
@@ -125,8 +127,44 @@ public class LogAnalysis {
 		return Integer.parseInt(st.nextToken());
 	}
 	
+	private static int testError(){
+		double p = 0.9; 
+		double err = 0.0; 
+		int n = 0;
+		int t = 0; 
+		int f = 0;
+		while(true){
+			
+			if(Math.random()<p){
+				if (Math.random()>err)
+					t++;
+				else
+					f++;
+			}
+			else {
+				if (Math.random()>err)
+					f++;
+				else
+					t++;
+			}
+			double prec = (double)(t)/(double)(f+t);
+			double l = TripleSelector.calcWilsonInterval(prec, f+t)[0];		
+			if(l>0.7)
+				break;
+		}
+		System.out.println(t+f);
+		return (t+f);
+	
+	}
+	
 	public static void main(String[] args){
-		pruningEffects("D:\\Works\\paperwork\\rule-mining\\simulation\\hc50.log");
+		int n = 10;
+		double sum = 0;
+		for(int i=0;i<n;i++){
+			sum += testError();
+		}
+		System.out.println(sum/n);
+		//pruningEffects("D:\\Works\\paperwork\\rule-mining\\simulation\\hc50.log");
 		//pruningEffects("/home/jchen/gilp/gilp18-21-55.log");
 	}
 }

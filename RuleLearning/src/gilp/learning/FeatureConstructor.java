@@ -54,7 +54,7 @@ public class FeatureConstructor {
 		//this._k = k;	
 		this._baseRP = rp;
 		this._F0 = initial_FB;
-		this._P0 = p0;
+		this._P0 = p0 * GILPSettings.CONVERGENCE_RATIO;
 	}
 	
 	//construct a table which stores the join results between the initial feedbacks
@@ -94,6 +94,12 @@ public class FeatureConstructor {
 		
 		PGEngine qe = new PGEngine(); 
 		RDFSubGraphSet sg_set = qe.getFBJoinRule(this._F0, this._baseRP._rule); 
+		if(sg_set == null) {
+			GILPSettings.log("Error in constructing BaseRPTable.");
+			GILPSettings.log(this._baseRP.getRule().toString());
+			return false;
+		}
+		
 		for (RDFSubGraph sg : sg_set.getSubGraphs()){
 			sql = "insert into " + temp_table + " values (" ;
 			ArrayList<Triple> listTriples = sg.getTriples(); 
@@ -121,15 +127,31 @@ public class FeatureConstructor {
 		}
 		return true;
 	}
+	
+	private boolean isStopedPredicate(String pred){
+		//hasGender, Date""
+		if (pred.equalsIgnoreCase("hasGender"))
+			return true;
+		
+		if (pred.equalsIgnoreCase("rdfslabel"))
+			return true;
+		
+		if (pred.indexOf("Date")>=0)
+			return true;
+		
+		return false;
+	}
 	 
 	/*
 	 * From the DB, search all predicates which can be joined with the input
 	 * rule, and extract frequent patterns from these joined sub-graphs.
 	 */
 	public ArrayList<ExpRulePackage> constructFeatures() {
-		if(this._baseRP.isExtended())
-			this.constructBaseRPTable(); 
-		
+		if(this._baseRP.isExtended()){
+			if(!this.constructBaseRPTable()){
+				return new ArrayList<>();
+			} 
+		}
 		ArrayList<String> pred_names = GILPSettings.getAllPredicateNames();
 		RDFRuleImpl r0 = this._baseRP.getRule();	
 		ArrayList<String> args = r0.getVariables();
@@ -192,12 +214,9 @@ public class FeatureConstructor {
 					if(validExpansion){
 						//TODO need to use selectivity instead
 						// diedOnDate, wasBornOnDate happenedOnDate wasCreatedOnDate wasDestroyedOnDate
-						if(tp.getPredicateName().equalsIgnoreCase("hasGender")  || tp.getPredicateName().indexOf("Date")>=0)
-						{	
-							int a = 1;
+						if(!this.isStopedPredicate(tp.getPredicateName())){	
+							listRlts.addAll(expand(tp));
 						}
-						else{	
-							listRlts.addAll(expand(tp));}
 					}	
 					//introduce a new variable in the object
 					var =  r0.getNextObjectVar(false);
@@ -212,11 +231,7 @@ public class FeatureConstructor {
 						}
 					}
 					if(validExpansion ){
-						if(tp.getPredicateName().equalsIgnoreCase("hasGender")  || tp.getPredicateName().indexOf("Date")>=0)
-						{	
-							int a = 1;
-						}
-						else{
+						if(!this.isStopedPredicate(tp.getPredicateName())){	
 							listRlts.addAll(expand(tp));
 						}
 					}

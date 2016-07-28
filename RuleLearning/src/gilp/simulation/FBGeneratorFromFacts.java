@@ -36,6 +36,29 @@ public class FBGeneratorFromFacts {
 		initialize();
 	}
 	
+	public Feedback getFixedComments(){
+		//Li_Shangyin  Wu_Wenjin Chen_Ning_Yang Zhang_Weihong  Wang_Lequan
+		String[] chosenNames = {"Li_Shangyin",  "Wu_Wenjin", "Chen_Ning_Yang", "Zhang_Weihong",  "Wang_Lequan"};
+		
+		int s = this._known_comments.size();
+		ArrayList<Comment> listCmts = new ArrayList<Comment>();
+		 
+		for (int i=0;i<this._known_comments.size(); i++){
+			Comment cmt = this._known_comments.get(i).clone();
+			for (int j=0;j<chosenNames.length;j++){
+				if (cmt.get_triple().get_subject().equalsIgnoreCase(chosenNames[j])){
+					listCmts.add(cmt);
+					break;
+				}
+			}
+			if (listCmts.size()>=5) 
+				break;
+		}
+		Feedback fb = new Feedback();
+		fb.set_comments(listCmts);
+		return fb;
+	}
+	
 	// randomly choose @num comments as a set of feedbacks
 	public Feedback getRandomComments(int num) {
 		String PREDICATE = "hasGivenName";
@@ -54,7 +77,7 @@ public class FBGeneratorFromFacts {
 		listCmts.add(new Comment(new Triple("Hu_Zongnan","hasGivenName", "Hu"), false));
 		*///listCmts.add(new Comment(new Triple("Kurt_Oppelt","hasGivenName", "Kurt"), true));
 		
- 
+		
 		while (listCmts.size() < Math.min(num, s)) {
 			int idx = (int) Math.round(Math.random() * (s - 1));
 			if (isChosen[idx] == 0) {

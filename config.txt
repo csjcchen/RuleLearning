@@ -2,7 +2,7 @@ logfile=/home/jchen/gilp/logs/
 #logfile=D:\\test\\gilp
 FREQUENT_CONST_IN_FB=0.3
 FREQUENT_CONST_IN_DB=0.1
-CP_TAU=0.6
+CP_TAU=0.7
 #threshold for accept or reject according to a confidence precision
 MAX_NUM_FB=50
 # maximum number of feedbacks pulled for verifying a single rule
@@ -12,6 +12,7 @@ LAMBDA=0.5
 CONFIDENCE_Z=1.96
 THRESHOLD_OF_PR=0.95
 MAXIMUM_RULE_LENGTH=2
+CONVERGENCE_RATIO=1.0
 IS_DEBUG=true
 MINIMUM_PRECISION=0.0000001
 DB_ENGINE=2

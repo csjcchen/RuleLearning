@@ -54,10 +54,12 @@ public class GILPSettings {
 	
 	public static double CONFIDENCE_Z; 
 		// 1 - \alpha/2 quantile of a standard normal distribution
-	public static  double THRESHOLD_OF_PR; 
-		// threshold for the probability that r is correct 
+	 
 	public static int MAXIMUM_RULE_LENGTH; 
 		// the permitted maximum value of the length of a rule
+	public static double CONVERGENCE_RATIO; 
+		// ratio of convergence requirement 
+	
 	public static boolean IS_DEBUG;
 		//whether the running is in the debug mode
 	public static double MINIMUM_PRECISION = EPSILON;
@@ -164,13 +166,14 @@ public class GILPSettings {
 		FREQUENT_CONST_IN_DB = Double.parseDouble(sim_prop.getProperty("FREQUENT_CONST_IN_DB"));
 		LAMBDA = Double.parseDouble(sim_prop.getProperty("LAMBDA"));
 		CONFIDENCE_Z = Double.parseDouble(sim_prop.getProperty("CONFIDENCE_Z"));
-		THRESHOLD_OF_PR = Double.parseDouble(sim_prop.getProperty("THRESHOLD_OF_PR"));
+		//THRESHOLD_OF_PR = Double.parseDouble(sim_prop.getProperty("THRESHOLD_OF_PR"));
 		MAXIMUM_RULE_LENGTH = Integer.parseInt(sim_prop.getProperty("MAXIMUM_RULE_LENGTH"));
 		IS_DEBUG = (sim_prop.getProperty("IS_DEBUG").equals("true"));
 	 	MINIMUM_PRECISION = Double.parseDouble(sim_prop.getProperty("MINIMUM_PRECISION"));
 	 	MAX_NUM_FEEDBACK = Integer.parseInt(sim_prop.getProperty("MAX_NUM_FB"));
 	 	MINIMUM_HC = Integer.parseInt(sim_prop.getProperty("HC_THRESHOLD"));
-	 	
+	 	PRECISION_THRESHOLD = Double.parseDouble(sim_prop.getProperty("CP_TAU"));
+	 	CONVERGENCE_RATIO = Double.parseDouble(sim_prop.getProperty("CONVERGENCE_RATIO"));
 	    
 	 	DB_ENGINE = Integer.parseInt(sim_prop.getProperty("DB_ENGINE"));
 	 		//1: RDF3X; 2: PostgreSQL; 	
@@ -191,17 +194,19 @@ public class GILPSettings {
 	  
 	 
 	
-		System.out.println("Settings:");
-		System.out.println("LogFile:" + logFile);
-		System.out.println("FREQUENT_CONST_IN_FB" + FREQUENT_CONST_IN_FB);
-		System.out.println("FREQUENT_CONST_IN_DB:" + FREQUENT_CONST_IN_DB);
-		System.out.println("LAMBDA:" + LAMBDA);
-		System.out.println("CONFIDENCE_Z:" + CONFIDENCE_Z);
-		System.out.println("THRESHOLD_OF_PR:" + THRESHOLD_OF_PR);		
-		System.out.println("MAXIMUM_RULE_LENGTH:" + MAXIMUM_RULE_LENGTH);
-		System.out.println("IS_DEBUG:" + IS_DEBUG);
-		System.out.println("MINIMUM_PRECISION:" + MINIMUM_PRECISION);
-		System.out.println("MINIMUM_HC:" + MINIMUM_HC);
+	 	GILPSettings.log("Settings:");
+	 	GILPSettings.log("LogFile:" + logFile);
+	 	GILPSettings.log("FREQUENT_CONST_IN_FB" + FREQUENT_CONST_IN_FB);
+	 	GILPSettings.log("FREQUENT_CONST_IN_DB:" + FREQUENT_CONST_IN_DB);
+	 	GILPSettings.log("LAMBDA:" + LAMBDA);
+	 	GILPSettings.log("CONFIDENCE_Z:" + CONFIDENCE_Z);
+	 	//GILPSettings.log("THRESHOLD_OF_PR:" + THRESHOLD_OF_PR);		
+	 	GILPSettings.log("MAXIMUM_RULE_LENGTH:" + MAXIMUM_RULE_LENGTH);
+	 	GILPSettings.log("IS_DEBUG:" + IS_DEBUG);
+	 	GILPSettings.log("MINIMUM_PRECISION:" + MINIMUM_PRECISION);
+	 	GILPSettings.log("MINIMUM_HC:" + MINIMUM_HC);
+	 	GILPSettings.log("PRECISION_THRESHOLD:" + PRECISION_THRESHOLD);
+	 	GILPSettings.log("CONVERGENCE_RATIO:" + CONVERGENCE_RATIO);
 		
 		switch(DB_ENGINE){
 	 	case 1:

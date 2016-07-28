@@ -611,7 +611,7 @@ public class PGEngine implements QueryEngine {
 		}		
 		
 		if(!find_join){
-			GILPSettings.log(this.getClass() + "cannot find join." + r0.toString() + " || " + tp.toString());
+			GILPSettings.log(this.getClass() + " cannot find join." + r0.toString() + " || " + tp.toString());
 			return -1;
 		}
 		
